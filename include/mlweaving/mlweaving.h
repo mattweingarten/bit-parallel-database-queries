@@ -19,12 +19,12 @@
 // MLWeaving: pack 8 samples together, 
 
 #include "string.h"
-#include "hazy/vector/fvector.h"
+#include "fvector.h"
 #include <immintrin.h>
 
 
-namespace hazy {
-namespace vector {
+// namespace hazy {
+// namespace vector {
 
 #define BITS_OF_CL      512
 #define NUM_BANKS       8
@@ -151,6 +151,6 @@ void inline retrieve_from_mlweaving(FVector<T> & dest, uint32_t *src, uint32_t i
 
 
 
-} // namespace vector
-} // namespace hazy
+// } // namespace vector
+// } // namespace hazy
 #endif

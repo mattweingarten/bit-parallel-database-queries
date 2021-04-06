@@ -60,26 +60,26 @@ def create_table(table_stats):
         rng = np.append(rng,[DEFAULT_MAX,1])
     ranges.append(rng)
     
-    print(ranges)
     assert(len(column_types) == len(ranges))
     columns = len(column_types)
     table = np.zeros((rows,columns))
 
-    fmt=""
     for i in range(columns):
         
         if(column_types[i] == "INDEX"):
-            fmt += " %i "
             populate_column_index(table[:,i])
         elif(column_types[i] == "FLOAT"):
-            fmt += " %10.32f"
             populate_column(ranges[i],table[:,i])
         elif(column_types[i] == "INT"):
-            fmt += " %i "
             populate_column(ranges[i],table[:,i])
             table[:,i] = table[:,i].astype(int)
 
-    np.savetxt(table_name,table,delimiter=',',fmt=fmt)
+
+    df = pd.DataFrame(table)
+    for i in range(len(column_types)):
+        if(column_types[i] == "INT" or column_types[i] == "INDEX"):
+            df.iloc[:,i]  = df.iloc[:,i].astype(int)
+    df.to_csv(table_name,header=False,index=False)
     return 
 
 
