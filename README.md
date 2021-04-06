@@ -10,6 +10,8 @@ Some ideas:
 Links:
 Google sheet for statistics: https://docs.google.com/spreadsheets/d/1GsCsubekCNPRbQb6wIyEAhq8gsVDXbsr5RNZdtho8D4/edit?usp=sharing
 
+TODO Google doc: https://docs.google.com/document/d/1Nvd2QfZYnLiwGtSbvccPG93FJo8UFzxAvRzsqlhOtvI/edit 
+
 Milestones page: https://medellin.inf.ethz.ch/courses/263-2300-ETH/
 
 Project pdf: https://acl.inf.ethz.ch/teaching/fastcode/2021/project/project-ideas/relational-queries.pdf
