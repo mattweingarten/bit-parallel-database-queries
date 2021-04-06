@@ -19,8 +19,6 @@ print(table_name)
 
 config = np.genfromtxt(config_file,delimiter=",",skip_header=0,dtype=str)
 
-# if(len(config.shape) == 1):
-#     config = np.array([config])
 
 
 # generate random with probability p smaller than x
@@ -58,8 +56,11 @@ def create_table(table_stats):
         else:
             rng = np.append(rng,float(column))
     ranges.pop(0)
+    if(rng.size == 0):
+        rng = np.append(rng,[DEFAULT_MAX,1])
     ranges.append(rng)
     
+    print(ranges)
     assert(len(column_types) == len(ranges))
     columns = len(column_types)
     table = np.zeros((rows,columns))
@@ -80,6 +81,8 @@ def create_table(table_stats):
 
     np.savetxt(table_name,table,delimiter=',',fmt=fmt)
     return 
+
+
 create_table(config)
 
 
