@@ -8,6 +8,7 @@ Some ideas:
 - keep track of input sizes, cache line sizes etc should all be in some header file (haven't made it yet)
 
 Links:
+TODO sheet : https://docs.google.com/document/d/1Nvd2QfZYnLiwGtSbvccPG93FJo8UFzxAvRzsqlhOtvI/edit
 Google sheet for statistics: https://docs.google.com/spreadsheets/d/1GsCsubekCNPRbQb6wIyEAhq8gsVDXbsr5RNZdtho8D4/edit?usp=sharing
 
 TODO Google doc: https://docs.google.com/document/d/1Nvd2QfZYnLiwGtSbvccPG93FJo8UFzxAvRzsqlhOtvI/edit 

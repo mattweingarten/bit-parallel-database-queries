@@ -19,8 +19,6 @@ print(table_name)
 
 config = np.genfromtxt(config_file,delimiter=",",skip_header=0,dtype=str)
 
-# if(len(config.shape) == 1):
-#     config = np.array([config])
 
 
 # generate random with probability p smaller than x
@@ -58,30 +56,32 @@ def create_table(table_stats):
         else:
             rng = np.append(rng,float(column))
     ranges.pop(0)
+    if(rng.size == 0):
+        rng = np.append(rng,[DEFAULT_MAX,1])
     ranges.append(rng)
     
     assert(len(column_types) == len(ranges))
     columns = len(column_types)
     table = np.zeros((rows,columns))
 
-    fmt=""
     for i in range(columns):
         
         if(column_types[i] == "INDEX"):
-            fmt += " %i,"
             populate_column_index(table[:,i])
         elif(column_types[i] == "FLOAT"):
-            fmt += " %10.32f,"
             populate_column(ranges[i],table[:,i])
         elif(column_types[i] == "INT"):
-            fmt += " %i,"
             populate_column(ranges[i],table[:,i])
             table[:,i] = table[:,i].astype(int)
-    if(fmt[-1] == ','):
-        fmt = fmt[:-1]
 
-    np.savetxt(table_name,table,delimiter=',',fmt=fmt)
+    df = pd.DataFrame(table)
+    for i in range(len(column_types)):
+        if(column_types[i] == "INT" or column_types[i] == "INDEX"):
+            df.iloc[:,i]  = df.iloc[:,i].astype(int)
+    df.to_csv(table_name,header=False,index=False)
     return 
+
+
 create_table(config)
 
 

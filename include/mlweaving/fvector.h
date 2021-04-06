@@ -23,8 +23,8 @@
 #include <cstdlib>
 #include <inttypes.h>
 
-namespace hazy {
-namespace vector {
+// namespace hazy {
+// namespace vector {
 
 /*! \brief This is a container for a size and pointer of a block of memory.
  * Memory must be managed by caller. 
@@ -74,6 +74,6 @@ class FVector {
   }
 };
 
-} // namespace vector
-} // namespace hazy
+// } // namespace vector
+// } // namespace hazy
 #endif
