@@ -68,15 +68,17 @@ def create_table(table_stats):
     for i in range(columns):
         
         if(column_types[i] == "INDEX"):
-            fmt += " %i "
+            fmt += " %i,"
             populate_column_index(table[:,i])
         elif(column_types[i] == "FLOAT"):
-            fmt += " %10.32f"
+            fmt += " %10.32f,"
             populate_column(ranges[i],table[:,i])
         elif(column_types[i] == "INT"):
-            fmt += " %i "
+            fmt += " %i,"
             populate_column(ranges[i],table[:,i])
             table[:,i] = table[:,i].astype(int)
+    if(fmt[-1] == ','):
+        fmt = fmt[:-1]
 
     np.savetxt(table_name,table,delimiter=',',fmt=fmt)
     return 
