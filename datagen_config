@@ -1,0 +1,7 @@
+N = 1000 // number of samples
+id = true // true false if first row is an int key
+FLOAT // Every row is a data column
+INT
+INT
+FLOAT
+FLOAT, 0.2 , 0.5 , 0.1 /// a data row in which 10% of the data lies between 0.2 and 0.5
