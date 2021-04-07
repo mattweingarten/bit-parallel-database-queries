@@ -64,16 +64,19 @@ so per line we store 512 features' single bits
 since we are only interested in "neighbouring" features, I will do 4 features per sample per cache line
 (TODO:: Make this more modular)
 */
-void weave_samples_simple(uint32_t *dest, uint32_t *src, uint32_t numSamples, uint32_t numFeatures){
+int weave_samples_simple(uint32_t *dest, uint32_t *src, uint32_t numSamples, uint32_t numFeatures){
 	uint32_t address_index = 0;
 	
 	if(numFeatures > 64){
 		printf("Too many features for a simple weaving! MAX == 64 \n\n");
-		return;
+		return -1;
+	}
+	else if(512 % numFeatures != 0){
+		printf("Features don't go into 512 evenly\n\n");
+		return -1;
 	}
 	
-	// 4 features per sample per cache line
-	// 512 bits -> 128 samples per cache line
+	// 512 bits of CL must be evenly divisible by numFeatures
 	uint32_t samples_in_CL = BITS_OF_CL / numFeatures;
 	
 	
@@ -107,11 +110,6 @@ void weave_samples_simple(uint32_t *dest, uint32_t *src, uint32_t numSamples, ui
 				a0 a1 a2 a3 b0 b1 b2 b3 ... h0 h1 h2 h3
 				a4 a5 a6 a7 b4 b5 b6 b7 ...
 				
-				
-				m = 32:
-				result_buffer[1] = r_b[1] | ((tmp_buffer[32] >> 31)<<(32&31))
-				32 & 31 == 0
-				so we get MSB from tmp_buffer[32], and shift it by 0.. should be correct??? (note: it is correct, the interpreter is wrong)
 				*/
 				for (int m = 0; m < BITS_OF_CL; m++)
 				{
@@ -141,11 +139,9 @@ void weave_samples_simple(uint32_t *dest, uint32_t *src, uint32_t numSamples, ui
 		}
 		//printf("\n");
 	}
+	return 0;
 }
 
-// 0000 0000 0000 0000 0000 0000 0000 0001 == 1.. correct..
-// 0000 0000 0000 0000 0000 0000 0000 0010 == 2.. correct..
-// 0000 0000 0000 0000 0000 0000 0001 1111 == 31
 /*
 Hopefully able to weave more than 64 features by moving them into another row (i.e. 32 values further along in the array)
 
@@ -214,18 +210,6 @@ void weave_samples(uint32_t *dest, uint32_t *src, uint32_t numSamples, uint32_t 
 	}
 }
 	
-int naive_test(uint32_t *data, uint32_t nrEntries){
-	uint32_t ref = 1717986918u;
-	for(uint32_t i = 0; i < nrEntries; i++){
-		if(data[i] != ref){
-			printf("wrong value: %u at index: %u \n\n", data[i], i);
-			
-			return -1;
-		}
-			
-	}
-	return 0;	
-}
 */
 
 
@@ -285,10 +269,10 @@ int main(int argc, char **argv) {
 		return 0;
 	}
 	
-	weave_samples_simple(weaved, normal, numSamples, numFeatures);
-		
-	if(naive_test(weaved, numSamples * numFeatures) != 0){
-		printf("Weaving was wrong \n");
+	int res = weave_samples_simple(weaved, normal, numSamples, numFeatures);
+	
+	if(res != 0){
+		printf("some sort of error in weaving\n\n");
 		return 0;
 	}
 	
@@ -307,7 +291,12 @@ int main(int argc, char **argv) {
 	
 	create_example_samples(normal, numSamples, numFeatures);
 	
-	weave_samples_simple(weaved, normal, numSamples, numFeatures);
+	res = weave_samples_simple(weaved, normal, numSamples, numFeatures);
+	
+	if(res != 0){
+		printf("some sort of error in weaving\n\n");
+		return 0;
+	}
 	
 	retrieve_from_simple_mlweaving(check, weaved, test_index, 32, numFeatures);
 	
