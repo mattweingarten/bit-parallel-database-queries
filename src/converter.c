@@ -34,6 +34,9 @@ NOTE: must malloc before calling this
 Nr of features should be a multiple of 4
 Return -1 on failure, 0 on success
 */
+
+char show_debug = 0;
+
 int create_naive_example_samples(uint32_t *dest, uint32_t numSamples, uint32_t numFeatures){
 	if((numSamples * numFeatures) % 256 != 0){
 		printf("Simple sample array doesn't align nicely, should choose numSamples / numFeatures s.t. they align w/ 256b. \n Current values: \n numSamples: %u , numFeatures: %u \n\n", numSamples, numFeatures);
@@ -137,13 +140,13 @@ int weave_samples_simple(uint32_t *dest, uint32_t *src, uint32_t numSamples, uin
 				dest[address_index++] = result_buffer[13];
 				dest[address_index++] = result_buffer[14];
 				dest[address_index++] = result_buffer[15];
-				/*
-				if(i == 0){
+				
+				if(i == 0 && show_debug){
 					if(k == 0) printf("Mem address of m: %p \n", &dest[2]);
 					uint32_t m = result_buffer[1];
 					printf("m: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(m>>24), BYTE_TO_BINARY(m>>16), BYTE_TO_BINARY(m>>8), BYTE_TO_BINARY(m));					
 				}
-				*/
+				
 			
 		}
 		//printf("\n");
@@ -235,10 +238,11 @@ void weave_samples(uint32_t *dest, uint32_t *src, uint32_t numSamples, uint32_t 
 
 	uint32_t within_offset = (index % (32 / numFeatures)) * numFeatures; // round index down according to features per uint32_t, then make index by multiplying
 	
+	if(show_debug){
 	printf("sample_offset: %u, within_offset: %u, index: %u \n", sample_offset, within_offset, index);
 	
 	printf("Memory address of src: %p , src + sample offset: %p , expected: %p \n\n", src, sample_addr);
-	
+	}
 	uint32_t t_bits_min_1       = sizeof(uint32_t)*8 - 1;
 
 	for (size_t i = 0; i < numFeatures; i++) 
@@ -252,7 +256,7 @@ void weave_samples(uint32_t *dest, uint32_t *src, uint32_t numSamples, uint32_t 
 		{
 					// sample address should be uint32_t representing first bit of these features
 		  tmp	  = sample_addr[(BITS_OF_CL/32)*j ]; //jump by a cacheline per bit
-		  if(i == 0){
+		  if(i == 0 && show_debug){
 			uint32_t m = tmp;
 			printf("m: "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN" "BYTE_TO_BINARY_PATTERN"\n", BYTE_TO_BINARY(m>>24), BYTE_TO_BINARY(m>>16), BYTE_TO_BINARY(m>>8), BYTE_TO_BINARY(m));  
 		  }
@@ -279,6 +283,8 @@ int main(int argc, char **argv) {
 			numSamples = (uint32_t) atof(argv[++j]);
 		} else if (!strcmp(argv[j],"--ti") && more) { // TEST INDEX
 			test_index = (uint32_t) atof(argv[++j]);
+		} else if (!strcmp(argv[j],"--d")){			  // DEBUG
+			show_debug = 1;
 		} else {
             printf("Unknown or not enough arguments for option '%s'.\n\n",
                 argv[j]);
@@ -290,7 +296,7 @@ int main(int argc, char **argv) {
 	if(test_index >= numSamples){
 		printf("Test index exceeds number of samples, be reasonable!\n\n");
 		exit(1);
-	} else if (numSamples * numFeatures < 512){
+	} else if ((numSamples * numFeatures) % 512 != 0){
 		printf("Test array doesn't align with cache line, will get odd behaviour towards end (TODO: PAD THE BUFFERS ACCORDINGLY ?). \n\n");
 	}
 	
