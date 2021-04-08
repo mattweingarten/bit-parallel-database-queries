@@ -1,6 +1,6 @@
 import numpy as np
 
-results_path = "./groundtruth/"
+results_path = "./data/groundtruth/"
 
 table_path = "./data/tables/"
 config_path = "./data/config/"
