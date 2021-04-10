@@ -1,6 +1,9 @@
+#ifndef DEBUG
+#define DEBUG
+
 #include <stdio.h>
 
-
+// credit for defines here : https://stackoverflow.com/questions/111928/is-there-a-printf-converter-to-print-in-binary-format
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)  \
   (byte & 0x80 ? '1' : '0'), \
@@ -15,24 +18,24 @@
 #define PRINT_B(byte) \
     printf(BYTE_TO_BINARY_PATTERN " ",BYTE_TO_BINARY(byte)); 
 
+#define PRINT_32_B(int32)\
+        PRINT_B(int32 >> 24);\
+        PRINT_B(int32 >> 16);\
+        PRINT_B(int32 >> 8);\
+        PRINT_B(int32);\
+
 #define LINE \
     printf("\n");
+
+#define BORDER\
+    printf(" | ");
 
 #define DEBUG_B(byte) \
     printf(BYTE_TO_BINARY_PATTERN " ",BYTE_TO_BINARY(byte));\
     LINE;
 
-#define COMPACT_NTH_BIT(n,input,res)  \
-    res = res << 1;                   \
-    res = res | input >> M - n -1  & 1 ; 
+void PRINT_MALLOC(uint32_t* ptr, size_t rows, size_t cols);
 
+void PRINT_MALLOC_B(uint32_t *ptr,size_t rows,size_t cols);
 
-#define PRINT_ARR(n,p,l) \
-    for (size_t i = 0; i < n; i++) \
-    {\
-       if(i % l == 0){LINE};\
-       PRINT_B(p[i]);\
-    }\
-    LINE
-
-#define PRINT_DB(n,p) 
+#endif

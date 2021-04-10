@@ -1,4 +1,7 @@
-#include <cstdio>             
+#ifndef LOAD
+#define LOAD
+
+#include <stdio.h>
 
 
 int count_rows(const char* file){
@@ -55,4 +58,7 @@ void* get_table(const char* file,size_t rows, size_t cols){
 		getValue(buf,fp);
 		printf("%s\n",buf);
 	}
+	return NULL;
 }
+
+#endif

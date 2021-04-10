@@ -1,3 +1,6 @@
+#ifndef TSC
+#define TSC
+
 /* ==================== GNU C and possibly other UNIX compilers ===================== */
 	#ifndef _WIN32
 
@@ -92,3 +95,4 @@ myInt64 stop_tsc(myInt64 start) {
 	return COUNTER_VAL(end) - start;
 }
 
+#endif

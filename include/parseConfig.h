@@ -1,3 +1,6 @@
+#ifndef PARSE
+#define PARSE
+
 #include <cstdio>             
 #include <math.h>
 #include <stdlib.h>
@@ -261,3 +264,4 @@ basicData getBasicDatafromfile(DataConfig dc, const char* file){
 	// return data
 	return data;
 }
+#endif 

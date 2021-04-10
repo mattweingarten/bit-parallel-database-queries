@@ -8,20 +8,12 @@ With some code adapted from mlweaving.h
 #include <stdio.h>
 #include <stdlib.h>
 #include <string.h>
+#include "../include/debug.h"
+#include "../include/converter.h"
 #define BATCH_BITS 64
 #define BITS_OF_CL 512
 
-// credit for defines here : https://stackoverflow.com/questions/111928/is-there-a-printf-converter-to-print-in-binary-format
-#define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
-#define BYTE_TO_BINARY(byte)  \
-  (byte & 0x80 ? '1' : '0'), \
-  (byte & 0x40 ? '1' : '0'), \
-  (byte & 0x20 ? '1' : '0'), \
-  (byte & 0x10 ? '1' : '0'), \
-  (byte & 0x08 ? '1' : '0'), \
-  (byte & 0x04 ? '1' : '0'), \
-  (byte & 0x02 ? '1' : '0'), \
-  (byte & 0x01 ? '1' : '0') 
+
 
 /*
 Destination just an array of samples w/ features
@@ -269,84 +261,84 @@ void weave_samples(uint32_t *dest, uint32_t *src, uint32_t numSamples, uint32_t 
 }
 
 
-int main(int argc, char **argv) {
+// int main(int argc, char **argv) {
 	
-	uint32_t numSamples = 2560;
-	uint32_t numFeatures = 4;
-	uint32_t test_index = 8;
-	int j;
-	for (j = 1; j < argc; j++) {
-		int more = j+1 < argc; // There are more arguments
+// 	uint32_t numSamples = 2560;
+// 	uint32_t numFeatures = 4;
+// 	uint32_t test_index = 8;
+// 	int j;
+// 	for (j = 1; j < argc; j++) {
+// 		int more = j+1 < argc; // There are more arguments
 
-        if (!strcmp(argv[j],"--nf") && more) { 		  // NUM FEATURES
-            numFeatures = (uint32_t) atof(argv[++j]);
-		} else if (!strcmp(argv[j],"--ns") && more) { // NUM SAMPLES
-			numSamples = (uint32_t) atof(argv[++j]);
-		} else if (!strcmp(argv[j],"--ti") && more) { // TEST INDEX
-			test_index = (uint32_t) atof(argv[++j]);
-		} else if (!strcmp(argv[j],"--d")){			  // DEBUG
-			show_debug = 1;
-		} else {
-            printf("Unknown or not enough arguments for option '%s'.\n\n",
-                argv[j]);
-            exit(1);
-        }
+//         if (!strcmp(argv[j],"--nf") && more) { 		  // NUM FEATURES
+//             numFeatures = (uint32_t) atof(argv[++j]);
+// 		} else if (!strcmp(argv[j],"--ns") && more) { // NUM SAMPLES
+// 			numSamples = (uint32_t) atof(argv[++j]);
+// 		} else if (!strcmp(argv[j],"--ti") && more) { // TEST INDEX
+// 			test_index = (uint32_t) atof(argv[++j]);
+// 		} else if (!strcmp(argv[j],"--d")){			  // DEBUG
+// 			show_debug = 1;
+// 		} else {
+//             printf("Unknown or not enough arguments for option '%s'.\n\n",
+//                 argv[j]);
+//             exit(1);
+//         }
 				
-	}
+// 	}
 	
-	if(test_index >= numSamples){
-		printf("Test index exceeds number of samples, be reasonable!\n\n");
-		exit(1);
-	} else if ((numSamples * numFeatures) % 512 != 0){
-		printf("Test array doesn't align with cache line, will get odd behaviour towards end (TODO: PAD THE BUFFERS ACCORDINGLY ?). \n\n");
-	}
+// 	if(test_index >= numSamples){
+// 		printf("Test index exceeds number of samples, be reasonable!\n\n");
+// 		exit(1);
+// 	} else if ((numSamples * numFeatures) % 512 != 0){
+// 		printf("Test array doesn't align with cache line, will get odd behaviour towards end (TODO: PAD THE BUFFERS ACCORDINGLY ?). \n\n");
+// 	}
 	
-	uint32_t* normal = (uint32_t*) malloc(numSamples * numFeatures * sizeof(uint32_t));
+// 	uint32_t* normal = (uint32_t*) malloc(numSamples * numFeatures * sizeof(uint32_t));
 	
-	uint32_t* weaved = (uint32_t*) malloc(numSamples * numFeatures * sizeof(uint32_t));
+// 	uint32_t* weaved = (uint32_t*) malloc(numSamples * numFeatures * sizeof(uint32_t));
 	
-	uint32_t* check = (uint32_t*) malloc(numFeatures * sizeof(uint32_t));
+// 	uint32_t* check = (uint32_t*) malloc(numFeatures * sizeof(uint32_t));
 	
-	int res = 0;
+// 	int res = 0;
 	
-	/*
-	if(create_naive_example_samples(normal, numSamples, numFeatures) != 0){
-		printf("Example sample creation failed \n");
-		return 0;
-	}
+// 	/*
+// 	if(create_naive_example_samples(normal, numSamples, numFeatures) != 0){
+// 		printf("Example sample creation failed \n");
+// 		return 0;
+// 	}
 	
-	res = weave_samples_simple(weaved, normal, numSamples, numFeatures);
+// 	res = weave_samples_simple(weaved, normal, numSamples, numFeatures);
 	
-	if(res != 0){
-		printf("some sort of error in weaving\n\n");
-		return 0;
-	}
+// 	if(res != 0){
+// 		printf("some sort of error in weaving\n\n");
+// 		return 0;
+// 	}
 	
 	
 	
-	retrieve_from_simple_mlweaving(check, weaved, test_index, 32, numFeatures);
+// 	retrieve_from_simple_mlweaving(check, weaved, test_index, 32, numFeatures);
 	
-	for(int i = 0; i < 4; i++)
-		printf("feature %i: %u == %u ? \n", i, check[i], normal[test_index * numFeatures + i]);
+// 	for(int i = 0; i < 4; i++)
+// 		printf("feature %i: %u == %u ? \n", i, check[i], normal[test_index * numFeatures + i]);
 	
-	*/
-	//numFeatures *= 2;
-	//numSamples /= 2;
+// 	*/
+// 	//numFeatures *= 2;
+// 	//numSamples /= 2;
 	
-	create_example_samples(normal, numSamples, numFeatures);
+// 	create_example_samples(normal, numSamples, numFeatures);
 	
-	res = weave_samples_simple(weaved, normal, numSamples, numFeatures);
+// 	res = weave_samples_simple(weaved, normal, numSamples, numFeatures);
 	
-	if(res != 0){
-		printf("some sort of error in weaving\n\n");
-		return 0;
-	}
+// 	if(res != 0){
+// 		printf("some sort of error in weaving\n\n");
+// 		return 0;
+// 	}
 	
-	retrieve_from_simple_mlweaving(check, weaved, test_index, 32, numFeatures);
+// 	retrieve_from_simple_mlweaving(check, weaved, test_index, 32, numFeatures);
 	
-	for(int i = 0; i < numFeatures; i++)
-		printf("feature %i: %u == %u ? \n", i, check[i], normal[test_index * numFeatures + i]);
+// 	for(int i = 0; i < numFeatures; i++)
+// 		printf("feature %i: %u == %u ? \n", i, check[i], normal[test_index * numFeatures + i]);
 	
-	printf("Everything o k \n");
-	return 0;
-}
+// 	printf("Everything o k \n");
+// 	return 0;
+// }
