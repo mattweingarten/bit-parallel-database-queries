@@ -4,6 +4,7 @@ With some code adapted from mlweaving.h
 
 
 */
+#include <stdint.h> 
 #include <stdio.h>
 #include <stdlib.h>
 #define BATCH_BITS 64
