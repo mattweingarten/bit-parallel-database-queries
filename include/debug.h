@@ -38,4 +38,5 @@ void PRINT_MALLOC(uint32_t* ptr, size_t rows, size_t cols);
 
 void PRINT_MALLOC_B(uint32_t *ptr,size_t rows,size_t cols);
 
+void PRINT_WEAVED(uint32_t* ptr,size_t rows, size_t cols);
 #endif

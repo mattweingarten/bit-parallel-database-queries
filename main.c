@@ -43,9 +43,11 @@ int main(int argc, char **argv) {
 	PRINT_MALLOC_B(src,rows,cols);
 
 	weave_samples_simple(dest,src,rows,cols);
+	printf("PRINT WEAVED::\n\n");
+	PRINT_WEAVED(dest,rows,cols);
 	// PRINT_MALLOC(dest,rows,cols);
 	LINE;LINE;
-	PRINT_MALLOC_B(dest,rows,cols);
+	//PRINT_MALLOC_B(dest,rows,cols);
 
 
 	//straightforward q1
