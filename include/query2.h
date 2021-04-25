@@ -7,7 +7,7 @@
 #include <string.h>
 
 
-void q2(void);
+uint64_t q2(uint32_t * data,int rows,int cols);
 
 
 

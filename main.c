@@ -49,7 +49,13 @@ int main(int argc, char **argv) {
 	//straightforward q1
 	uint32_t* q1_dest = (uint32_t*) malloc(rows * sizeof(uint32_t));
 	q1(src,q1_dest,rows,cols);
+	uint64_t sum = q2(src,rows,cols);
+
+	printf("Q1 result:\n");
 	PRINT_MALLOC(q1_dest,rows,1);
+	printf("Q2 result:\n");
+	printf("%d\n",sum);
+	
 	free(src);
 	free(dest);
 	return 0;
