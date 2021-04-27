@@ -59,7 +59,6 @@ int weave_samples(uint32_t *dest, uint32_t *src, uint32_t numSamples, uint32_t n
 	
 	
 	for(uint32_t i = 0; i < numSamples; i += samples_per_CL){
-		int li = 0;
 		// in case our cacheline doesn't contain 512 values (so we don't go out of bounds accessing src)
 		uint32_t samples_in_CL = (i + samples_per_CL) < numSamples ? samples_per_CL : numSamples - i;
 		
@@ -175,7 +174,7 @@ int weave_samples(uint32_t *dest, uint32_t *src, uint32_t numSamples, uint32_t n
 	// tells us which bit within the block we start on
 	int within_offset = (cl_index % samples_per_block) * numFeatures;
 	
-	// divide by word length (32bits) to find which word it starts in
+	// division tells us which block it is, * 2 to give us the word (first block is words 0, 1. second is 2, 3 etc)
 	uint32_t word_offset = 2 * (cl_index / samples_per_block);
 	
 	// if in second word of block we have to add one to word offset
