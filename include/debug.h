@@ -30,6 +30,9 @@
 #define BORDER\
     printf(" | ");
 
+#define HLINE \
+    printf("==============================================================================================================================================================\n");
+
 #define DEBUG_B(byte) \
     printf(BYTE_TO_BINARY_PATTERN " ",BYTE_TO_BINARY(byte));\
     LINE;

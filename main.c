@@ -19,61 +19,63 @@
 int main(int argc, char **argv) {
 	int rows = 128; //numsamples
 	int cols = 4;  // numfeatures?
-
+	int numEntries = numberOfEntries(rows,cols);
 
 	printf("Size : %d\n", rows * cols );
+	printf("Numentries : %d\n", numEntries );
 
-
-	int num_blocks = (int) ceil(rows * cols / 512.0);
 
 	uint32_t * src = (uint32_t* ) malloc(rows * cols * sizeof(uint32_t));
-	uint32_t * dest = (uint32_t* ) malloc(num_blocks * 32 * 16 * sizeof(uint32_t));
+	uint32_t * dest = (uint32_t* ) malloc(numEntries * sizeof(uint32_t));
 	uint32_t* q1_dest = (uint32_t*) malloc(rows * sizeof(uint32_t));
 
 	uint32_t count = 0;
 	for(int i = 0; i < rows;++i){
 		for(int j = 0; j < cols;++j){
-			if(i <= rows){
-				// if(j % 2 == 0){
-					src[i * cols + j] = 1L << 31 ;
-					src[i * cols + j] += 1L << 30;
+			// if(i <= 1){
+				// if(j == 1){
+					// src[i * cols + j] = (uint32_t) 1L << 31;
 				// }
-				
-			}
-			
-			// printf("src[%d] = %d \n",i*cols + j,);
+					
+					src[i * cols + j] = (uint32_t) (rand());				
+			// }			
 			count++;
 		}	
 	}
 	PRINT_MALLOC(src,rows,cols);
 	PRINT_MALLOC_B(src,rows,cols);
-
-	weave_samples_simple(dest,src,rows,cols);
-	printf("PRINT WEAVED::\n\n");
-	// PRINT_WEAVED(dest,rows,cols);
-	PRINT_MALLOC_B(dest,10,4);
-	// PRINT_MALLOC(dest,rows,cols);
+	weave_samples(dest,src,rows,cols);
 	LINE;LINE;
-	//PRINT_MALLOC_B(dest,rows,cols);
+	PRINT_WEAVED(dest,rows,cols);
+	LINE;LINE;
 
+	numEntries = numberOfEntries(rows,cols);
+	uint32_t* results = malloc(rows * sizeof(uint32_t));
+	uint32_t * temps = malloc(rows * sizeof(uint32_t));
+	memset(results,0,rows*4);
+	memset(temps,0,rows*4);
+
+	q1_weave(dest,results,temps,32,512,cols,rows,numEntries);
+
+	
+
+	// printf("Num entries total :%d\n",numEntries);
+	// assert(count == numEntries);
 
 	//straightforward q1
 
+	// PRINT_MALLOC(results,128,1);
+	LINE;
 	q1(src,q1_dest,rows,cols);
-	printf("Q1 result:\n");
-	PRINT_MALLOC(q1_dest,rows,1);
-	printf("Q2 result:\n");
-	printf("%d\n",q2(src,rows,cols));
+	// printf("Q1 result:\n");
+	// PRINT_MALLOC(q1_dest,rows,1);
+	assert(compare(results,q1_dest,rows));
+	// printf("Q2 result:\n");
+	// printf("%d\n",q2(src,rows,cols));
 	free(src);
 	free(dest);
 	free(q1_dest);
-
-	// uint8_t y = 0b00000000;
-	// uint8_t x = 0b00000001;
-	// PRINT_B(x); LINE;
-	// PRINT_B(y); LINE;
-	// PRINT_B(y - x);
-
+	converter_test(2560, 4, 1111);
 	test_lt();
 	return 0;
 }
