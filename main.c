@@ -17,8 +17,8 @@
 
 
 int main(int argc, char **argv) {
-	int rows = 128; //numsamples
-	int cols = 4;  // numfeatures?
+	int rows = 256; //numsamples
+	int cols = 16;  // numfeatures?
 	int numEntries = numberOfEntries(rows,cols);
 
 	printf("Size : %d\n", rows * cols );
@@ -42,11 +42,11 @@ int main(int argc, char **argv) {
 			count++;
 		}	
 	}
-	PRINT_MALLOC(src,rows,cols);
-	PRINT_MALLOC_B(src,rows,cols);
+	// PRINT_MALLOC(src,rows,cols);
+	// PRINT_MALLOC_B(src,rows,cols);
 	weave_samples(dest,src,rows,cols);
 	LINE;LINE;
-	PRINT_WEAVED(dest,rows,cols);
+	// PRINT_WEAVED(dest,rows,cols);
 	LINE;LINE;
 
 	numEntries = numberOfEntries(rows,cols);
@@ -64,11 +64,15 @@ int main(int argc, char **argv) {
 
 	//straightforward q1
 
-	// PRINT_MALLOC(results,128,1);
+	
 	LINE;
 	q1(src,q1_dest,rows,cols);
-	// printf("Q1 result:\n");
+
+	// PRINT_MALLOC(results,rows,1);
+	printf("Q1 result:\n");
 	// PRINT_MALLOC(q1_dest,rows,1);
+
+
 	assert(compare(results,q1_dest,rows));
 	// printf("Q2 result:\n");
 	// printf("%d\n",q2(src,rows,cols));

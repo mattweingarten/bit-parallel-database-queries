@@ -4,7 +4,7 @@
 void PRINT_MALLOC(uint32_t* ptr, size_t rows, size_t cols){
     for(int i = 0; i < rows;++i){
 		for(int j = 0; j < cols;++j){
-			printf("%u ",ptr[i * cols + j]);
+			printf("[%d,%d]:%u ",i,j,ptr[i * cols + j]);
 		}
 		LINE;
 	}
@@ -32,10 +32,16 @@ void PRINT_WEAVED(uint32_t* ptr,size_t rows, size_t cols){
 		HLINE;
 		for(int j = 0; j < 32;++j){ // should be n_bits (size of data representation)
 		// Shows the first 32 * 4 entries
-			for(int k = 0; k <= 3; k++){
+			for(int k = 0; k <= 15; k++){
+				if(k % 4 == 0){
+					LINE;
+				}
 				PRINT_32_B(ptr[(i * 512) + (16 * j) + k]);
 				BORDER;
 			}
+			LINE;
+			LINE;
+			HBORDER;
 		LINE;
 		}
 		HLINE;
