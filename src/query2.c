@@ -27,7 +27,7 @@ uint64_t q2(uint32_t * data,int rows,int cols){
 uint64_t q2_weave(uint32_t * data,uint32_t * cond_buffer,uint32_t *temp_buffer,uint32_t *sum_buffer,int word_size,int block_size,int num_features, int num_samples,int number_entries){
 
 
-        int chunk_index;
+    int chunk_index;
 	int feature_index;
 	uint32_t a;
 	uint32_t b;
@@ -66,11 +66,12 @@ uint64_t q2_weave(uint32_t * data,uint32_t * cond_buffer,uint32_t *temp_buffer,u
             }
         }
 
-        memset(sum_buffer,0,samples_per_block);
-        memset(temp_buffer,0,samples_per_block);
-        memset(cond_buffer,0,samples_per_block); 
+        memset(sum_buffer,0,4 * samples_per_block);
+        memset(temp_buffer,0,4 * samples_per_block);
+        memset(cond_buffer,0,4 * samples_per_block);
+        // PRINT_MALLOC(sum_buffer,samples_per_block,1); 
         //
-        return sum;
+        
     }
-
+    return sum;
 }

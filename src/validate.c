@@ -8,44 +8,20 @@
 #include<stdbool.h>  
 #include <stdarg.h>
 
-// void validate(enum Query q, ...){
 
-
-//     va_list argp;
-//     va_start(argp, q);
-
-//     switch (q)
-//     {
-//     case Q1:
-//         /* code */
-//         break;
-    
-//     case Q2:
-//     /* code */
-//         break;
-//     case Q3:
-//     /* code */
-//         break;
-    
-//     default:
-//         printf("Invalid query type!\n");
-//         break;
-//     }
-//     return;
-// }
 
 void validate_query(union query_t query, enum Query type){
 
     generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
-    size_t row_sizes[5] = {256,512,1024,2048,32768};
-    size_t cols_sizes[5] = {2,4,8,16,32};
+    size_t row_sizes[5] = {128,256,512,2048,32768};
+    size_t cols_sizes[4] = {4,8,16,32};
     bool correct;
     size_t count_correct = 0;
     size_t count = 0;
     printf("======================== Starting validation ==========================\n\n");
     for(int i = 0; i < 5; i++){
         for(int j = 0; j < 5; j++){
-            for(int k = 0;k < 5;k++){
+            for(int k = 0;k < 4;k++){
                 bool correct;
 
                 switch (type)
@@ -102,6 +78,7 @@ bool test_q2(q2_type q,generator gen,size_t rows,size_t cols){
         uint64_t  gt =  q2_groundtruth(db,rows,cols);
         uint32_t * ml = weave_samples_wrapper(db,rows,cols);
         uint64_t res = q2_wrapper(q,ml,rows,cols);
+        // printf("Res = %lu,gt= %lu \n",res,gt);
         correct = res == gt;
         free(db);
         free(ml);
