@@ -25,11 +25,4 @@ void test_lt(void){
     printf("Test lt passed!\n");
 }
 
-bool compare(uint32_t * x, uint32_t *y,int N){
-    bool res = true;
-    for(int i = 0; i < N; ++i){
-        // printf("[%d]=>%d,%d\n",i,x[i],y[i]);
-        res = res && (x[i] == y[i]);
-    }
-    return res;
-}
+

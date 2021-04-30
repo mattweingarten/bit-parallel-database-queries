@@ -14,7 +14,7 @@
 uint64_t q2(uint32_t * data,int rows,int cols){
     uint64_t sum = 0;
     for(int i = 0;i < rows;++i){
-        printf("[%d],res=%u,val=%u\n",i,data[i * cols + 0] < data[i * cols + 1],data[i * cols + 2]);
+        // printf("[%d],res=%u,val=%u\n",i,data[i * cols + 0] < data[i * cols + 1],data[i * cols + 2]);
         if(data[i * cols + 0] < data[i * cols + 1]){
             sum += data[i * cols + 2];
         }
@@ -40,7 +40,6 @@ uint64_t q2_weave(uint32_t * data,uint32_t * cond_buffer,uint32_t *temp_buffer,u
     int num_blocks = ceil(number_entries / block_size);
     int rows_per_block = block_size / word_size;
     int cols_per_block = word_size;
-    printf("Staring query 1 with:num_blocks=%d,block_size=%d, samples_per_block = %d, samples_per_word = %d,num_features= %d\n",num_blocks,block_size,samples_per_block,samples_per_word);
     for(int k = 0; k < num_blocks;k++){
         for(int j = 0; j < word_size;++j){ 
             for(int i = 0; i < samples_per_block; ++i){ 
@@ -60,7 +59,7 @@ uint64_t q2_weave(uint32_t * data,uint32_t * cond_buffer,uint32_t *temp_buffer,u
 
         // TODO: this part should be easily vectorizable and we can multiple accumalators!
         for(int i = 0; i < samples_per_block;++i){
-            printf("[%d]:, res_buffer=[%u],sumbuffer=%u,\n",i,cond_buffer[i],sum_buffer[i]);
+            // printf("[%d]:, res_buffer=[%u],sumbuffer=%u,\n",i,cond_buffer[i],sum_buffer[i]);
 
             if(cond_buffer[i]){ // use mm_256_blendvd for branch elimination
                 sum += sum_buffer[i]; // use acc for sum

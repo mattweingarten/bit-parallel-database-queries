@@ -3,6 +3,10 @@
 
 #include <stdio.h>
 
+
+#define RED   "\x1B[31m"
+#define GRN   "\x1B[32m"
+#define RESET "\x1B[0m"
 // credit for defines here : https://stackoverflow.com/questions/111928/is-there-a-printf-converter-to-print-in-binary-format
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
 #define BYTE_TO_BINARY(byte)  \

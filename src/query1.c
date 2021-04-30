@@ -33,7 +33,7 @@ void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,i
     int num_blocks = ceil(number_entries / block_size);
     int rows_per_block = block_size / word_size;
     int cols_per_block = word_size;
-    printf("Staring query 1 with:num_blocks=%d,block_size=%d, samples_per_block = %d, samples_per_word = %d,num_features= %d\n",num_blocks,block_size,samples_per_block,samples_per_word);
+    // printf("Staring query 1 with:num_blocks=%d,block_size=%d, samples_per_block = %d, samples_per_word = %d,num_features= %d\n",num_blocks,block_size,samples_per_block,samples_per_word);
     for(int k = 0; k < num_blocks;k++){
         for(int j = 0; j < word_size;++j){ 
             for(int i = 0; i < samples_per_block; ++i){ 
