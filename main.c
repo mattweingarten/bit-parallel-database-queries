@@ -46,7 +46,7 @@ int main(int argc, char **argv) {
 	// PRINT_MALLOC_B(src,rows,cols);
 	weave_samples(dest,src,rows,cols);
 	LINE;LINE;
-	// PRINT_WEAVED(dest,rows,cols);
+	PRINT_WEAVED(dest,rows,cols);
 	LINE;LINE;
 
 	numEntries = numberOfEntries(rows,cols);
