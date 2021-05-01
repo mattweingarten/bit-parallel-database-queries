@@ -1,3 +1,6 @@
 What if 512 % (numsamples  * numfeatures) != 0?
 Can we assume precision to be 32 bits (and 31 with < )
 To what extent do we reconstruct the data ? (return bitvector of zeros and ones ) or not? -> how does this factor into performance
+
+
+What happens when we mod by 0 ? C standard says this results in UB

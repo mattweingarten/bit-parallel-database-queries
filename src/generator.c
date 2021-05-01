@@ -29,6 +29,23 @@ uint32_t mod_gen(size_t i, size_t j){
     return i + j % 10;
 }
 
+uint32_t one_gen(size_t i, size_t j){
+    return 1;
+}
+
+uint32_t one_zero_gen(size_t i, size_t j){
+    return (j ) % 2;
+}
+
+uint32_t two_zero_gen(size_t i, size_t j){
+    if((j + 1) %2 == 0){
+        return 2;
+    }
+    else {
+        return 0;
+    }
+}
+
 
 uint32_t* generateDB(size_t rows,size_t cols, generator gen){
     uint32_t* res = (uint32_t*)  malloc(rows * cols * sizeof(uint32_t));

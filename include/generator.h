@@ -16,6 +16,8 @@ uint32_t asc_gen(size_t i, size_t j);
 uint32_t i_gen(size_t i, size_t j);
 uint32_t j_gen(size_t i, size_t j);
 uint32_t mod_gen(size_t i, size_t j);
-
+uint32_t one_gen(size_t i, size_t j);
+uint32_t one_zero_gen(size_t i, size_t j);
+uint32_t two_zero_gen(size_t i, size_t j);
 
 #endif 
