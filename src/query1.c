@@ -48,3 +48,76 @@ void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,i
 	    }
     }
 }
+
+void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_features, int num_samples,int number_entries){
+	
+	// b == a >> 1
+	uint64_t a;
+	uint64_t b;
+	
+	uint64_t xor;
+	
+	
+	int samples_per_block = 64 / num_features;
+	int samples_per_cl = samples_per_block * 8;
+   	int num_cl = ceil(((float)num_samples) / samples_per_cl);
+
+	//printf("spb: %i, spcl: %i, num_cl: %i, ne: %i \n\n", samples_per_block, samples_per_cl, num_cl, number_entries);
+	// write results to memory after every cacheline block 
+	uint64_t temp[8] = {0}; //start as all 0's
+	uint64_t res[8] = {0};
+	
+	// use 64bit pointer (do we need to cast?)
+	uint64_t * d = data;
+	
+	/* i is the cacheline block index
+	   j is the bit index (i.e. first to 32nd bit of each value)
+	   k is the block index (we compute blocks at a time!)
+	   
+	   need to store a res and a temp for each block
+	*/
+	for(int i = 0; i < num_cl; i++){
+		for(int j = 0; j < 32; j++){ // 32 == num_bits (should be a constant?)
+			for(int k = 0; k < 8; k++){ // 8 == blocks per CL .. should be a variable according to blocks per cacheline like in "retrieve_from_simple_mlweaving" .. TODO!!
+				// R.a < R.b => a = x, b = y
+				a = d[(i * 256) + j * 8 + k];
+				b = a >> 1;
+				xor = a ^ b;
+				/*
+				if(i == 2 && j == 31 && k == 0){
+					PRINT_64_B(a);
+					LINE;
+					PRINT_64_B(b);
+					LINE;
+					PRINT_64_B(xor);
+					LINE;
+					LINE;
+				}*/
+				res[k] |= (xor & b) & (~temp[k]);
+				temp[k] |= xor & a;
+				/*
+				if(i == 2 && j == 31 && k == 0){
+					PRINT_64_B(res[k]);
+					LINE;
+				}*/
+			}
+		}
+		
+		for(int k = 0; k < 8; k++){
+			uint64_t cres = res[k];
+			for(int m = 0; m < samples_per_block; m++){
+				results[i * samples_per_cl + k * samples_per_block + m] = cres & 1;
+				cres = cres >> num_features;
+				/*
+				if(i == 2 && k == 0){
+					PRINT_64_B(cres);
+					printf("r: %u idx: %i", results[i * samples_per_cl + k * samples_per_block + m], i * samples_per_cl + k * samples_per_block + m);
+					LINE;
+				}
+				*/
+			}
+			temp[k] = 0; // reset temp and res
+			res[k] = 0;
+		}
+	}		
+}

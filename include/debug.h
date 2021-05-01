@@ -27,6 +27,16 @@
         PRINT_B(int32 >> 16);\
         PRINT_B(int32 >> 8);\
         PRINT_B(int32);\
+		
+#define PRINT_64_B(int64)\
+		PRINT_B(int64 >> 56);\
+        PRINT_B(int64 >> 48);\
+        PRINT_B(int64 >> 40);\
+        PRINT_B(int64 >> 32);\
+        PRINT_B(int64 >> 24);\
+        PRINT_B(int64 >> 16);\
+        PRINT_B(int64 >> 8);\
+        PRINT_B(int64);\
 
 #define LINE \
     printf("\n");

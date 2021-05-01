@@ -26,7 +26,7 @@ uint64_t q2(uint32_t * data,int rows,int cols){
 
 uint64_t q2_weave(uint32_t * data,uint32_t * cond_buffer,uint32_t *temp_buffer,uint32_t *sum_buffer,int word_size,int block_size,int num_features, int num_samples,int number_entries){
 
-    printf("Got here!\n");
+    // printf("Got here!\n");
     int chunk_index;
 	int feature_index;
 	uint32_t a;
