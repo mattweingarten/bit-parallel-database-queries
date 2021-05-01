@@ -8,6 +8,54 @@
 #include<stdbool.h>  
 #include <stdarg.h>
 
+void single_test(union query_t query, enum Query type){
+
+    generator gen = &rand_gen;
+    size_t rows = 512;
+    size_t cols = 4;
+    bool correct;
+    size_t count_correct = 0;
+    size_t count = 0;
+
+	switch (type)
+	{
+	case Q1:
+		correct = true;
+        uint32_t * db = generateDB(rows,cols,gen);
+        uint32_t * gt =  q1_groundtruth(db,rows,cols);
+        uint32_t * ml = weave_samples_wrapper(db,rows,cols);
+        uint32_t * res = q1_wrapper(query.q1,ml,rows,cols);
+        correct = correct && compare(res,gt,rows);
+        free(db);
+        free(gt);
+        free(ml);
+        free(res);
+		break;
+	case Q2:
+		correct = test_q2((q2_type) query.q2,gen,rows,cols);
+		break;
+	case Q3:
+		break;
+	default:
+		printf("Invalid query type!\n");
+		break;
+	}
+
+	if(correct){
+		count_correct++;
+		printf(GRN "PASSED" RESET);
+		printf(" Test for q%d  with rows =  %d, cols = %d\n",type + 1,rows,cols);
+	}else{
+		printf(RED "FAILED" RESET);
+		printf(" Test for q%d  with rows =  %d, cols = %d\n",type  + 1,rows,cols);
+	}
+	count++;
+       
+     
+    
+    printf("\n\n======================== Validation completed PASSED: %d/%d ==========================\n",count_correct,count);
+}
+
 
 
 void validate_query(union query_t query, enum Query type){
@@ -160,7 +208,7 @@ uint32_t *q1_wrapper(q1_type q,uint32_t* data,size_t rows,size_t cols){
     memset(results,0,rows*4);
 	memset(temps,0,rows*4);
     size_t numEntries = numberOfEntries(rows,cols);
-    q1_weave(data,results,temps,32,512,cols,rows,numEntries);
+    q1_parallel_weave(data,results,temps,32,512,cols,rows,numEntries);
     free(temps);
     return results;
 }

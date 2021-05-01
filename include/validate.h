@@ -34,6 +34,7 @@ typedef union query_t {
     q2_type q2;
 } query_t;
 
+void single_test(union query_t query, enum Query type);
 
 void validate_query(query_t query, enum Query type);
 //generator in standard row based implementation
