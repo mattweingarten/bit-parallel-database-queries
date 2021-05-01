@@ -6,24 +6,18 @@
 #include <stdlib.h>
 #include <stdbool.h>  
 #include "../include/query.h"
+#include "../include/generator.h"
 
 #define N_RUNS 10
 
 
-typedef uint32_t (*generator) (size_t,size_t); 
+// typedef uint32_t (*generator) (size_t,size_t); 
 
 
 void single_test(union query_t query, enum Query type);
 
 void validate_query(union query_t query, enum Query type);
 //generator in standard row based implementation
-uint32_t* generateDB(size_t rows,size_t cols, generator);
-// generators
-uint32_t rand_gen(size_t i, size_t j );
-uint32_t asc_gen(size_t i, size_t j);
-uint32_t i_gen(size_t i, size_t j);
-uint32_t j_gen(size_t i, size_t j);
-uint32_t mod_gen(size_t i, size_t j);
 
 uint32_t* q1_groundtruth(uint32_t* data,size_t rows,size_t cols);
 uint64_t q2_groundtruth(uint32_t* data,size_t rows,size_t cols);
