@@ -22,9 +22,11 @@ int main(int argc, char **argv) {
 	q1.q1 = &q1_weave;
 	query_t q2;
 	q2.q2 = &q2_weave;
+	bool t = test_q2(&q2_weave,&rand_gen,256,4);
+	printf("%d\n",t);
 
-	validate_query(q1,Q1);
-	validate_query(q2,Q2);
+	// validate_query(q1,Q1);
+	// validate_query(q2,Q2);
 
 	converter_test(2560, 4, 1111);
 	// test_q2(&q2_weave,&rand_gen,256,4);	

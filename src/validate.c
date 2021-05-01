@@ -27,10 +27,10 @@ void validate_query(union query_t query, enum Query type){
                 switch (type)
                 {
                 case Q1:
-                    correct = test_q1((q1_type) query.q1,generators[i],row_sizes[j],cols_sizes[k]);
+                    correct = test_q1(query.q1,generators[i],row_sizes[j],cols_sizes[k]);
                     break;
                 case Q2:
-                    correct = test_q2((q2_type) query.q2,generators[i],row_sizes[j],cols_sizes[k]);
+                    correct = test_q2(query.q2,generators[i],row_sizes[j],cols_sizes[k]);
                     break;
                 case Q3:
                     break;
@@ -78,8 +78,7 @@ bool test_q2(q2_type q,generator gen,size_t rows,size_t cols){
         uint64_t  gt =  q2_groundtruth(db,rows,cols);
         uint32_t * ml = weave_samples_wrapper(db,rows,cols);
         uint64_t res = q2_wrapper(q,ml,rows,cols);
-        // printf("Res = %lu,gt= %lu \n",res,gt);
-        correct = res == gt;
+        correct = correct && res == gt;
         free(db);
         free(ml);
     }
@@ -88,35 +87,33 @@ bool test_q2(q2_type q,generator gen,size_t rows,size_t cols){
 
 
 
-//generators to populate array
-uint32_t rand_gen(int i, int j ){
+//generators to populate malloc
+uint32_t rand_gen(size_t i, size_t j ){
     	return ((uint32_t) rand() << 1) + ((uint32_t) rand() % 2);
 }
 
-uint32_t asc_gen(int i, int j){
+uint32_t asc_gen(size_t i, size_t j){
     return i + j;
 }
 
-uint32_t i_gen(int i, int j){
+uint32_t i_gen(size_t i, size_t j){
     return i;
 }
 
 
-uint32_t j_gen(int i, int j){
+uint32_t j_gen(size_t i, size_t j){
     return j;
 }
 
-uint32_t mod_gen(int i, int j){
+uint32_t mod_gen(size_t i, size_t j){
     return i + j % 10;
 }
 
 
-
-
 uint32_t* generateDB(size_t rows,size_t cols, generator gen){
     uint32_t* res = (uint32_t*)  malloc(rows * cols * sizeof(uint32_t));
-    for(int i = 0; i < rows;++i){
-		for(int j = 0; j < cols;++j){
+    for(size_t i = 0; i < rows;++i){
+		for(size_t j = 0; j < cols;++j){
             res[i * cols + j] = gen(i,j);
         }	
 	}
@@ -124,8 +121,7 @@ uint32_t* generateDB(size_t rows,size_t cols, generator gen){
 }
 
 
-
-bool compare(uint32_t * x, uint32_t *y,int n){
+bool compare(uint32_t * x, uint32_t *y,size_t n){
     bool res = true;
     for(int i = 0; i < n; ++i){
         res = res && (x[i] == y[i]);
@@ -147,6 +143,7 @@ uint64_t q2_groundtruth(uint32_t* data,size_t rows,size_t cols){
 }
 
 
+//wrapper functions
 uint32_t *weave_samples_wrapper(uint32_t* data,size_t rows,size_t cols){
     size_t numEntries = numberOfEntries(rows,cols);
     uint32_t * res = (uint32_t* ) malloc(numEntries * sizeof(uint32_t));
@@ -165,8 +162,7 @@ uint32_t *q1_wrapper(q1_type q,uint32_t* data,size_t rows,size_t cols){
     return results;
 }
 
-uint64_t q2_wrapper(q1_type q,uint32_t* data,size_t rows,size_t cols){
-
+uint64_t q2_wrapper(q2_type q,uint32_t* data,size_t rows,size_t cols){
     uint32_t samples_per_block = 512 / cols;
     uint32_t * cond_buffer = malloc(samples_per_block * sizeof(uint32_t));
     uint32_t * temp_buffer = malloc(samples_per_block * sizeof(uint32_t));
@@ -174,7 +170,6 @@ uint64_t q2_wrapper(q1_type q,uint32_t* data,size_t rows,size_t cols){
     memset(cond_buffer,0,samples_per_block*4);
 	memset(temp_buffer,0,samples_per_block*4);
 	memset(sum_buffer,0,samples_per_block*4);
-
     size_t numEntries = numberOfEntries(rows,cols);
     uint64_t res = q2_weave(data,cond_buffer,temp_buffer,sum_buffer,32,512,cols,rows,numEntries);
     free(cond_buffer);
