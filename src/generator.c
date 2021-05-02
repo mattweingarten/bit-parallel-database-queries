@@ -26,7 +26,7 @@ uint32_t j_gen(size_t i, size_t j){
 }
 
 uint32_t mod_gen(size_t i, size_t j){
-    return i + j % 10;
+    return (i + j) % 10;
 }
 
 uint32_t one_gen(size_t i, size_t j){
