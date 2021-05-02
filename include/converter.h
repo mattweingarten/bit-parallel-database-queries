@@ -4,6 +4,7 @@
 #include <stdint.h>
 #include <stdlib.h>
 
+uint32_t *weave_samples_wrapper(uint32_t* data,size_t rows,size_t cols);
 
 int create_example_samples(uint32_t *dest, uint32_t numSamples, uint32_t numFeatures);
 

@@ -49,10 +49,16 @@ uint32_t two_zero_gen(size_t i, size_t j){
 
 uint32_t* generateDB(size_t rows,size_t cols, generator gen){
     uint32_t* res = (uint32_t*)  malloc(rows * cols * sizeof(uint32_t));
+    
     for(size_t i = 0; i < rows;++i){
 		for(size_t j = 0; j < cols;++j){
             res[i * cols + j] = gen(i,j);
         }	
 	}
     return res;
+}
+
+
+uint32_t cartesian_product_size(int R_rows, int R_cols, int S_rows, int S_cols){
+	return R_rows * S_rows * (R_cols + S_cols);
 }

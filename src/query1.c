@@ -21,7 +21,9 @@ void q1(uint32_t * data,uint32_t * dest,int rows,int cols){
 }
 
 
-void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_features, int num_samples,int number_entries){
+void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+	// printf("Got here q1_weave\n");
+	// printf("data=%lx,results=%lx,temps=%lx,wordsize=%d,blocksize=%d,num_fet=%d,num_samples=%d,num_entries=%d\n",data,results,temps,word_size,block_size,num_features,num_samples,number_entries);
     int chunk_index;
 	int feature_index;
 	uint32_t a;
@@ -33,12 +35,16 @@ void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,i
     int num_blocks = ceil(number_entries / block_size);
     int rows_per_block = block_size / word_size;
     int cols_per_block = word_size;
-    // printf("Staring query 1 with:num_blocks=%d,block_size=%d, samples_per_block = %d, samples_per_word = %d,num_features= %d\n",num_blocks,block_size,samples_per_block,samples_per_word);
+	// printf("Got here q1_weave2\n");
+	// printf("Got here q1_weave2\n");
+    // printf("Staring query 1 with:num_blocks=%d,block_size=%d, samples_per_block = %d, samples_per_word = %d,num_features= %d\n",num_blocks,block_size,samples_per_block,samples_per_word,num_features);
     for(int k = 0; k < num_blocks;k++){
         for(int j = 0; j < word_size;++j){ 
+			
             for(int i = 0; i < samples_per_block; ++i){ 
                 chunk_index = i / samples_per_word; 
-                feature_index = i % samples_per_word; 
+                feature_index = i % samples_per_word;
+				
                 a = data[k * block_size + rows_per_block * j  + chunk_index] >> (feature_index * num_features) &1;
                 b = data[k * block_size + rows_per_block * j  + chunk_index] >> (feature_index * num_features + 1) &1;
                 xor =  a ^ b;
@@ -49,7 +55,7 @@ void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,i
     }
 }
 
-void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_features, int num_samples,int number_entries){
+void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
 	
 	// b == a >> 1
 	uint64_t a;

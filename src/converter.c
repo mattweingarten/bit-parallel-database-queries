@@ -22,6 +22,16 @@ Stored such that we have each sample in its entirety before the next
 [0a, 0b, 0c, 0d, 1a, 1b, 1c, 1d, 2a, ...] (note: LSB is on the left here)
 */
 
+//wrapper functions
+uint32_t *weave_samples_wrapper(uint32_t* data,size_t rows,size_t cols){
+    size_t numEntries = numberOfEntries(rows,cols);
+    uint32_t * res = (uint32_t* ) malloc(numEntries * sizeof(uint32_t));
+    weave_samples(res,data,rows,cols);
+    return res;
+}
+
+
+
 char show_debug = 0;
 
 int create_example_samples(uint32_t *dest, uint32_t numSamples, uint32_t numFeatures){

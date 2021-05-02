@@ -8,9 +8,7 @@
 
 
 
-uint32_t cartesian_product_size(int R_rows, int R_cols, int S_rows, int S_cols){
-	return R_rows * S_rows * (R_cols + S_cols);
-}
+
 
 //SELECT * FROM R, S WHERE R.a % S.b = S.c;
 
@@ -53,17 +51,75 @@ void q3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, int R_ro
 }
 
 
-// void q3_weave(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
-// 	size_t R_words_per_cl = 32 * cl_size / R_cols;  
-// 	size_t S_words_per_Cl = 32 * cl_size / S_cols;
-// 	for(size_t i = 0; i < R_rows; ++i){
-// 		uint32_t R_a = 0;
-// 		for(size_t k = 0;k < wordsize; ++k){
 
-// 		}
-// 		for(size_t j = 0; j < S_rows;++j){
+// we assume for now that R and S have the same weaving parameters
+void q3_weave(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows,uint32_t *R_buffer, uint32_t *S_buffer, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
+	size_t cl_block_size = wordsize * cl_size;
 
-// 		}
-// 	}
+	size_t dest_index = 0;
+	size_t dest_cols = R_cols + S_cols;
 
-// }
+	size_t R_cl_index;
+	size_t R_samples_per_entry = 32 / R_cols;
+	size_t R_samples_per_cl = cl_size * R_samples_per_entry;
+
+	size_t S_cl_index;
+	size_t S_samples_per_entry = 32 / S_cols;
+	size_t S_samples_per_cl = cl_size * S_samples_per_entry;
+	
+
+	for(size_t i = 0; i < R_rows; ++i){
+		for(size_t m = 0; m < R_cols;++m){
+			R_buffer[m] = 0;
+		}
+		size_t R_cl_block_index = (i * R_cols) / cl_block_size;
+		size_t R_cl_index = (i % R_samples_per_cl) / R_samples_per_entry; 
+		size_t R_shift_index = (i % R_samples_per_entry) * R_cols;
+		
+		for(size_t k = 0;k < wordsize; ++k){
+			size_t R_i_index = R_cl_block_index * cl_block_size + k * cl_size + R_cl_index;
+
+			for(size_t m = 0; m < R_cols;++m){
+				uint32_t kth_bit_m = (dR[R_i_index] >> (R_shift_index + m) ) &1;
+				R_buffer[m] += (kth_bit_m << (wordsize - k - 1));
+
+
+			}
+			// printf("[%d]block_index=%d,cl_index=%d,shift_index=%d => [%d]\n",i,R_cl_block_index,R_cl_index,R_shift_index,R_i_index);
+	
+		}
+		// printf("[%d]block_index=%d,cl_index=%d,shift_index=%d\n",i,R_cl_block_index,R_cl_index,R_shift_index);
+		for(size_t j = 0; j < S_rows;++j){
+			for(size_t n = 0; n < S_cols;++n){
+				S_buffer[n] = 0;
+			}
+
+			size_t S_cl_block_index = j / cl_block_size;
+			size_t S_cl_index = (j % S_samples_per_cl) / S_samples_per_entry; 
+			size_t S_shift_index = (j % S_samples_per_entry) * S_cols;
+
+			for(size_t l = 0; l < wordsize; ++l){
+				size_t S_j_index = S_cl_block_index * cl_size * wordsize + l * cl_size + S_cl_index;
+				for(size_t n = 0; n < S_cols;++n){
+					uint32_t kth_bit_n = (dS[S_j_index] >> (S_shift_index + n) ) &1;
+					S_buffer[n] += (kth_bit_n << (wordsize - l - 1));
+				}
+			}
+			if(S_buffer[1] != 0 && (R_buffer[0]) % S_buffer[1] == S_buffer[2]){ // harcoded R.a, S.b,S.c
+				size_t m = 0;
+				size_t n = 0;
+				for(; m < R_cols; ++m){
+					dest[dest_index * dest_cols + m] = R_buffer[m];
+			
+				}
+				
+				for(; n < S_cols; ++n){
+					dest[dest_index * dest_cols + m + n] = S_buffer[n];
+					
+				}
+				dest_index++;
+			}		
+		}
+	}
+	*dest_rows = dest_index;
+}
