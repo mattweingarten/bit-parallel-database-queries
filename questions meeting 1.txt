@@ -4,3 +4,12 @@ To what extent do we reconstruct the data ? (return bitvector of zeros and ones 
 
 
 What happens when we mod by 0 ? C standard says this results in UB
+
+
+Modulo reduction teqnuiques:
+
+x % y == z
+special cases: 
+    -> y = 0 -> false
+    -> y = 2^n -> bitshift and & 
+    -> y > x ==> x == z

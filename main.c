@@ -80,12 +80,13 @@ int main(int argc, char **argv) {
 	// realloc(dest_1,out_size_1 * 6 *  sizeof(uint32_t));
 	// // PRINT_MALLOC(dest_1,out_size_1, 6);
 
-	bool correct = test_q3(&q3_weave,&asc_gen,&asc_gen,256,4,256,4);
-	printf("Result of test: %d\n",correct);
-	// validate_query((void*) &q1_weave,Q1);
-	// validate_query((void*) &q1_parallel_weave,Q1);
+	// bool correct = test_q3(&q3_weave,&asc_gen,&asc_gen,256,4,256,4);
+	// printf("Result of test: %d\n",correct);
+	validate_query((void*) &q1_weave,Q1);
+	validate_query((void*) &q1_vector_weave,Q1);
+	validate_query((void*) &q1_parallel_weave,Q1);
 	// validate_query((void*) &q2_weave, Q2);
-	validate_query((void* ) &q3_weave,Q3);
+	// validate_query((void* ) &q3_weave,Q3);
 
 	// printf("Outsize q3=%d,outsize q3_weave=%d\n",out_size,out_size_1);
 	// printf("Q3 weave == q3: %d\n",compare_rows_cols(dest_1,dest,out_size,6));

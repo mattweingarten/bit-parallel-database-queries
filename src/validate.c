@@ -5,13 +5,14 @@
 #include "../include/debug.h"
 #include "../include/generator.h"
 
+#include <stdio.h>
 #include <stdint.h> 
 #include <stddef.h>
 #include <stdlib.h>
 #include <stdbool.h>  
 #include <stdarg.h>
 #include <math.h>
-
+#include <x86intrin.h>
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 // void single_test(union query_t query, enum Query type){
