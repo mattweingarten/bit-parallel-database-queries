@@ -21,6 +21,12 @@ void PRINT_MALLOC_B(uint32_t* ptr,size_t rows, size_t cols){
 	}
 }
 
+void PRINT_MALLOC_H(uint32_t* ptr,size_t n){
+    for(int i = 0; i < n;++i){
+		printf(" %u ",ptr[i]);
+	}
+}
+
 void PRINT_WEAVED(uint32_t* ptr,size_t rows, size_t cols){
 	int num_blocks = ceil(rows * cols / 512);
 	printf("Number of blocks:%d\n",num_blocks);

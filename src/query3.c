@@ -67,7 +67,6 @@ void q3_weave(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows,uin
 	size_t S_samples_per_entry = 32 / S_cols;
 	size_t S_samples_per_cl = cl_size * S_samples_per_entry;
 	
-
 	for(size_t i = 0; i < R_rows; ++i){
 		for(size_t m = 0; m < R_cols;++m){
 			R_buffer[m] = 0;
@@ -85,26 +84,39 @@ void q3_weave(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows,uin
 
 
 			}
+
+
 			// printf("[%d]block_index=%d,cl_index=%d,shift_index=%d => [%d]\n",i,R_cl_block_index,R_cl_index,R_shift_index,R_i_index);
 	
 		}
+		// PRINT_MALLOC_H(R_buffer,R_cols);
+		// LINE;
 		// printf("[%d]block_index=%d,cl_index=%d,shift_index=%d\n",i,R_cl_block_index,R_cl_index,R_shift_index);
 		for(size_t j = 0; j < S_rows;++j){
 			for(size_t n = 0; n < S_cols;++n){
 				S_buffer[n] = 0;
 			}
 
-			size_t S_cl_block_index = j / cl_block_size;
+			size_t S_cl_block_index = (j * S_cols) / cl_block_size;
 			size_t S_cl_index = (j % S_samples_per_cl) / S_samples_per_entry; 
 			size_t S_shift_index = (j % S_samples_per_entry) * S_cols;
 
 			for(size_t l = 0; l < wordsize; ++l){
+
 				size_t S_j_index = S_cl_block_index * cl_size * wordsize + l * cl_size + S_cl_index;
 				for(size_t n = 0; n < S_cols;++n){
 					uint32_t kth_bit_n = (dS[S_j_index] >> (S_shift_index + n) ) &1;
 					S_buffer[n] += (kth_bit_n << (wordsize - l - 1));
 				}
 			}
+
+			if(i == 0){
+				// printf("%u %u %u %u \n",S_buffer[0],S_buffer[1],S_buffer[2],S_buffer[3]);
+				// PRINT_MALLOC_H(S_buffer,S_cols);
+				// LINE;
+			}
+
+
 			if(S_buffer[1] != 0 && (R_buffer[0]) % S_buffer[1] == S_buffer[2]){ // harcoded R.a, S.b,S.c
 				size_t m = 0;
 				size_t n = 0;

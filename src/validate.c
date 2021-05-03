@@ -114,13 +114,15 @@ void validate_query(void* query, enum Query type){
                     //         }
                     //     }
                     // }
-                    correct = test_q3((q3_t)query,&rand_gen,&mod_gen,row_sizes[j],cols_sizes[k],row_sizes[j % 2],cols_sizes[k % 2]);
+                    correct = test_q3((q3_t)query,&rand_gen,&mod_gen,row_sizes[j],cols_sizes[k],row_sizes[j % 3 + 1],cols_sizes[k % 2 + 1]);
                     if(correct){
+                        count_correct++;
                         printf(GRN "PASSED" RESET);
                     }else{
                         printf(RED "FAILED" RESET);
                     }
-                    printf(" Test for q%d  with R_rows = %d, R_cols = %d, R_gen = randgen, S_rows = %d, S_cols = %d,S_gen=mod_gen\n",type  + 1,row_sizes[j],cols_sizes[k],row_sizes[j % 2],cols_sizes[k % 2]);
+                    count++;
+                    printf(" Test for q%d  with R_rows = %d, R_cols = %d, R_gen = randgen, S_rows = %d, S_cols = %d,S_gen=mod_gen\n",type  + 1,row_sizes[j],cols_sizes[k],row_sizes[j % 3 + 1],cols_sizes[k % 2 + 1]);
                     break;
                 default:
                     printf("Invalid query type!\n");
@@ -131,7 +133,7 @@ void validate_query(void* query, enum Query type){
             }
         }
     }
-    printf("\n\n======================== Validation completed PASSED: %d/%d ==========================\n",count_correct,count);
+    printf("\n\n======================== Validation completed PASSED:" YEL " %d/%d " RESET  "==========================\n",count_correct,count);
 }
 
 bool test_q1(q1_t q,generator gen,size_t rows,size_t cols){
@@ -177,6 +179,13 @@ bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols
     for(size_t i = 0; i < N_RUNS;++i){
         uint32_t* R = generateDB(R_rows,R_cols,R_gen);
         uint32_t* S = generateDB(S_rows,S_cols,S_gen);
+
+        // PRINT_MALLOC(S,S_rows,S_cols);
+        // HLINE;
+
+        // PRINT_MALLOC(R,R_rows,R_cols);
+        // HLINE;
+
         uint32_t * R_weave = weave_samples_wrapper(R,R_rows,R_cols);
         uint32_t * S_weave = weave_samples_wrapper(S,S_rows,S_cols);
 
@@ -292,7 +301,7 @@ bool compare(uint32_t * x, uint32_t *y,size_t n){
 
 bool compare_rows_cols(uint32_t * x, uint32_t *y,size_t rows,size_t cols){
     bool res = true;
-    printf("Got here\n");
+    // printf("Got here\n");
     for(int i = 0; i < rows; ++i){
         // bool row_res = true;
         for(int j = 0; j < cols;++j){
@@ -302,7 +311,7 @@ bool compare_rows_cols(uint32_t * x, uint32_t *y,size_t rows,size_t cols){
             // row_res = row_res && xij == yij;
 
         }
-        if(true){
+        if(false){
             printf("[%d] =>",i);
             for(int j = 0; j < cols; ++j){
                 uint32_t xij = x[i * cols + j];

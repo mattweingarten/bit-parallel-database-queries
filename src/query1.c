@@ -133,6 +133,8 @@ void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int wo
 
 void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_features, int num_samples,int number_entries){
 	
+	// printf("got here\n");
+
 	__m256i a1;
 	__m256i b1;
 	__m256i xor1;
