@@ -51,14 +51,15 @@ int main(int argc, char **argv) {
 	// q3_weave()
 	// union query_t q;
 	// q.q1 = q1_weave;
-	// query_t q;
-	// q.q1 = q1_weave;
- 	// validate_query( (void*)&q1_weave,Q1);
-	// validate_query((query_t) q,Q1);
+	//query_t q;
+	//q.q1 = q1_weave;
+ 	//validate_query( (void*)&q1_weave,Q1);
+	//validate_query((query_t) q,Q1);
 
 
-	// test_q1(q1_parallel_weave,rand_gen,256,4);
-	
+	bool c = test_q1(q1_vector_weave,rand_gen,256,8);
+	printf("Correct : %i \n", c);
+	//validate_query(&q1_vector_weave, Q1);
 	// converter_test(2560, 4, 1111);
 	// test_q2(&q2_weave,&rand_gen,256,4);
 
