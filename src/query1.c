@@ -142,6 +142,19 @@ void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int wo
 - it is 100% the vector load intrinsics causing the corruption / crash
 - was using ALIGNED load, but data was not 32bit aligned !!
 
+OP COUNT (vector instructions count as 4 ops ? or 8? depends how you count 32 vs 64 bit words in comparison to parallel weave it would be 4 as parallel uses 64bit words):
+(not counting working out samples per block and similar things)
+i loop:
+	j loop: (happens num_cl * 32 times), all ops are 256bit vector ops !
+		2 right shifts
+		2 xor
+		4 or
+		4 and
+		2 and / not (counts as one op ? two?)
+		
+	m loop: (happens num_cl * samples_per_block * 2 times (two vectors per i loop))
+		4 and
+		4 right shifts
 */
 void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
 
