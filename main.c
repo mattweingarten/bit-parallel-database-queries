@@ -8,6 +8,7 @@
 #include "include/query.h"
 #include "include/unit_tests.h"
 #include "include/validate.h"
+#include "include/perform.h"
 #include <stdint.h> 
 #include <stdio.h>
 #include <stdlib.h>
@@ -85,5 +86,13 @@ int main(int argc, char **argv) {
 
 	// printf("Outsize q3=%d,outsize q3_weave=%d\n",out_size,out_size_1);
 	// printf("Q3 weave == q3: %d\n",compare_rows_cols(dest_1,dest,out_size,6));
+	
+
+	////////////////////////////// RUNTIME ////////////////////////
+	//
+	
+	//performance_rnd_query((void*) &q1_parallel_weave, Q1);
+	
+	performance_rnd_query((void*) &q2_weave, Q2);
 	return 0;
 }
