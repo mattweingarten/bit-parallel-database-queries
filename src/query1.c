@@ -155,6 +155,11 @@ i loop:
 	m loop: (happens num_cl * samples_per_block * 2 times (two vectors per i loop))
 		4 and
 		4 right shifts
+		
+		
+NOTE:
+SHOULD MAKE THE READ OUT INTO RESULTS MORE MODULAR TO AVOID WRITING BEYOND THE ARRAY IF THERE ARENT enough samples to fill out all of the blocks in every cacheline block.
+either that, or pad the results array to align with the numper of samples per cacheline block
 */
 void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
 
