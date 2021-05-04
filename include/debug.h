@@ -6,6 +6,8 @@
 
 #define RED   "\x1B[31m"
 #define GRN   "\x1B[32m"
+#define BLU   "\x1B[34m"
+#define YEL   "\x1B[33m"
 #define RESET "\x1B[0m"
 // credit for defines here : https://stackoverflow.com/questions/111928/is-there-a-printf-converter-to-print-in-binary-format
 #define BYTE_TO_BINARY_PATTERN "%c%c%c%c%c%c%c%c"
@@ -58,4 +60,5 @@ void PRINT_MALLOC(uint32_t* ptr, size_t rows, size_t cols);
 void PRINT_MALLOC_B(uint32_t *ptr,size_t rows,size_t cols);
 
 void PRINT_WEAVED(uint32_t* ptr,size_t rows, size_t cols);
+void PRINT_MALLOC_H(uint32_t* ptr,size_t n);
 #endif

@@ -6,7 +6,7 @@
 #include "../include/debug.h"
 #include "../include/query1.h"
 #include <math.h>
-#include <x86intrin.h>
+#include <immintrin.h>
 //Select * FROM R WHERE R.a < R.b
 
 //Straightforward
@@ -126,13 +126,43 @@ void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int wo
 			temp[k] = 0; // reset temp and res
 			res[k] = 0;
 		}
-	}		
+	}
 }
 
-// STILL BUGGY FOR SOME REASON (crash as we get into the loop,, maybe the load is borked)
+// seems to work now, could use some cleaning up.. validation crashes but single test seems good?
 
-void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_features, int num_samples,int number_entries){
-	
+/* must be corrupting memory somewhere, things i have tested:
+- memcpy (to load the data into cres)
+- results somehow writing 64bits
+- index out of bound of results
+- commenting out everything after computing res1 and 2 (i.e. ~line 240)
+
+- COMMENTING OUT THE j LOOP FIXES CRASH
+- memory corruption happens somewhere in j loop! (wtf?!)
+- it is 100% the vector load intrinsics causing the corruption / crash
+- was using ALIGNED load, but data was not 32bit aligned !!
+
+OP COUNT (vector instructions count as 4 ops ? or 8? depends how you count 32 vs 64 bit words in comparison to parallel weave it would be 4 as parallel uses 64bit words):
+(not counting working out samples per block and similar things)
+i loop:
+	j loop: (happens num_cl * 32 times), all ops are 256bit vector ops !
+		2 right shifts
+		2 xor
+		4 or
+		4 and
+		2 and / not (counts as one op ? two?)
+		
+	m loop: (happens num_cl * samples_per_block * 2 times (two vectors per i loop))
+		4 and
+		4 right shifts
+		
+		
+NOTE:
+SHOULD MAKE THE READ OUT INTO RESULTS MORE MODULAR TO AVOID WRITING BEYOND THE ARRAY IF THERE ARENT enough samples to fill out all of the blocks in every cacheline block.
+either that, or pad the results array to align with the numper of samples per cacheline block
+*/
+void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+
 	__m256i a1;
 	__m256i b1;
 	__m256i xor1;
@@ -150,17 +180,24 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 	int samples_per_cl = samples_per_block * 8;
    	int num_cl = ceil(((float)num_samples) / samples_per_cl);
 	
-	printf("num_cl: %i ", num_cl);
-	printf("REACH HERE\n\n");
 	uint64_t * d = data;
-	
 	
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
 		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
 			// load correct vector
-			a1 = _mm256_load_si256((__m256i *) (d + (i * 256) + j * 8));
+			a1 = (__m256i) _mm256_loadu_pd(d + (i * 256) + j * 8);
+			
+			// GOOD WAY TO INSPECT __mXXX values
+			/*
+			if(i == 0 && j > 16){
+				int64_t v64val[4];
+				memcpy(v64val, &a1, sizeof(v64val));
+				PRINT_64_B(v64val[3]);
+				LINE;
+			}
+			*/
 			
 			// shift right by one
 			b1 = _mm256_srli_epi64(a1, 1);
@@ -178,7 +215,8 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			
 			//now for second vector of the cache line
 			// load correct vector
-			a2 = (__m256i) _mm256_load_ps(d + (i * 256) + j * 8 + 4); // + 4 as 4 64 bit words per vector
+			a2 = (__m256i) _mm256_loadu_ps(d + (i * 256) + j * 8 + 4); // + 4 as 4 64 bit words per vector
+			
 			// shift right by one
 			b2 = _mm256_srli_epi64(a2, 1);
 			//xor 
@@ -192,21 +230,32 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			//compute temp
 			a2 = _mm256_and_si256 (a2, xor2);
 			temp2 = _mm256_or_si256 (temp2, a2);
+			
 		}
 		
-		// can't think of a way of doing it with just one shift for now
-		
+		//printf("reach here");
 		// read results out 
-		uint64_t cres0 = (uint64_t) _mm256_cvtsd_f64((__m256d)res1); // convert to double
-		__m256i res1s = _mm256_srli_si256(res1, 64); //shift by 64 bit
-		uint64_t cres1 = (uint64_t) _mm256_cvtsd_f64((__m256d)res1s); // load new bottom 64 bit
+		uint64_t cres[4];
+		memcpy(cres, &res1, sizeof(cres));
+		//_mm256_store_pd(cres,(__m256d) res1); // causes crash for some reason.. investigate!
 		
-		__m128i res1_u = _mm256_extractf128_si256(res1, 1); // load top 128 bits
-		
-		// load next 128 bits (at most 64 bits per sample, so will always need to read every 64bit word)
-		uint64_t cres2 = (uint64_t) _mm_cvtsd_f64 ((__m128d)res1_u);
-		__m128i res1_us = _mm_srli_si128 (res1_u, 64); //shift by 64 bit
-		uint64_t cres3 = (uint64_t) _mm_cvtsd_f64 ((__m128d)res1_us);
+		uint64_t cres0 = cres[0];
+		uint64_t cres1 = cres[1];
+		uint64_t cres2 = cres[2];
+		uint64_t cres3 = cres[3];
+		/*
+		if(i == 0){
+			printf("c0, c1, c2, c3 (in order): \n");
+			PRINT_64_B(cres[0]);
+			LINE;
+			PRINT_64_B(cres[1]);
+			LINE;
+			PRINT_64_B(cres[2]);
+			LINE;
+			PRINT_64_B(cres[3]);
+			LINE;
+		}
+		*/
 		for(int m = 0; m < samples_per_block; m++){
 			// first 64 bit block
 			results[i * samples_per_cl + m] = cres0 & 1;
@@ -229,33 +278,30 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 		// NOW SAME THING BUT FOR res2 !
 		
 		// read results out 
-		cres0 = (uint64_t) _mm256_cvtsd_f64((__m256d)res2); // convert to double
-		res1s = _mm256_srli_si256(res1, 64); //shift by 64 bit
-		cres1 = (uint64_t) _mm256_cvtsd_f64((__m256d)res1s); // load new bottom 64 bit
-		
-		res1_u = _mm256_extractf128_si256(res1, 1); // load top 128 bits
-		
-		// load next 128 bits (at most 64 bits per sample, so will always need to read every 64bit word)
-		cres2 = (uint64_t) _mm_cvtsd_f64 ((__m128d)res1_u);
-		res1_us = _mm_srli_si128 (res1_u, 64); //shift by 64 bit
-		cres3 = (uint64_t) _mm_cvtsd_f64 ((__m128d)res1_us);
+		uint64_t cres_2[4];
+		memcpy(cres_2, &res2, sizeof(cres_2));
+		uint64_t cres02 = cres_2[0];
+		uint64_t cres12 = cres_2[1];
+		uint64_t cres22 = cres_2[2];
+		uint64_t cres32 = cres_2[3];
 		for(int m = 0; m < samples_per_block; m++){
 			// first 64 bit block
-			results[i * samples_per_cl + m + 4 * samples_per_block] = cres0 & 1;
-			cres0 = cres0 >> num_features;
+			results[i * samples_per_cl + m + 4 * samples_per_block] = cres02 & 1;
+			cres02 = cres02 >> num_features;
 			
 			// second 64 bit block
-			results[i * samples_per_cl + (4 + 1) * samples_per_block + m] = cres1 & 1;
-			cres1 = cres1 >> num_features;
+			results[i * samples_per_cl + (4 + 1) * samples_per_block + m] = cres12 & 1;
+			cres12 = cres12 >> num_features;
 			
 			//third
-			results[i * samples_per_cl + (4 + 2) * samples_per_block + m] = cres2 & 1;
-			cres2 = cres2 >> num_features;
+			results[i * samples_per_cl + (4 + 2) * samples_per_block + m] = cres22 & 1;
+			cres22 = cres22 >> num_features;
 			
 			
 			//fourth
-			results[i * samples_per_cl + (4 + 3) * samples_per_block + m] = cres3 & 1;
-			cres3 = cres3 >> num_features;
+			results[i * samples_per_cl + (4 + 3) * samples_per_block + m] = cres32 & 1;
+			cres32 = cres32 >> num_features;
+			//printf("SAMPLE NR: %i \n", i * samples_per_cl + (4 + 3) * samples_per_block + m);
 		}
 		
 		// reset temp and res
@@ -265,8 +311,4 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
 	}
-	
-	
-	
-	
 }

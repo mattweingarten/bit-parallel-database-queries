@@ -9,8 +9,18 @@
 
 //generators to populate malloc
 uint32_t rand_gen(size_t i, size_t j ){
+        // time_t t;
+        // srand((unsigned) time(&t));
+
     	return ((uint32_t) rand() << 1) + ((uint32_t) rand() % 2);
 }
+
+uint32_t rand_100_gen(size_t i, size_t j ){
+        // time_t t;
+        // srand((unsigned) time(&t));
+    	return ((uint32_t) rand() %100);
+}
+
 
 uint32_t asc_gen(size_t i, size_t j){
     return i + j;
