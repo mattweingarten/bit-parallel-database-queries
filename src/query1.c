@@ -6,7 +6,7 @@
 #include "../include/debug.h"
 #include "../include/query1.h"
 #include <math.h>
-#include <x86intrin.h>
+#include <immintrin.h>
 //Select * FROM R WHERE R.a < R.b
 
 //Straightforward
@@ -135,9 +135,37 @@ void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int wo
 
 // seems to work now, could use some cleaning up.. validation crashes but single test seems good?
 
+/* must be corrupting memory somewhere, things i have tested:
+- memcpy (to load the data into cres)
+- results somehow writing 64bits
+- index out of bound of results
+- commenting out everything after computing res1 and 2 (i.e. ~line 240)
+
+- COMMENTING OUT THE j LOOP FIXES CRASH
+- memory corruption happens somewhere in j loop! (wtf?!)
+- it is 100% the vector load intrinsics causing the corruption / crash
+- was using ALIGNED load, but data was not 32bit aligned !!
+
+OP COUNT (vector instructions count as 4 ops ? or 8? depends how you count 32 vs 64 bit words in comparison to parallel weave it would be 4 as parallel uses 64bit words):
+(not counting working out samples per block and similar things)
+i loop:
+	j loop: (happens num_cl * 32 times), all ops are 256bit vector ops !
+		2 right shifts
+		2 xor
+		4 or
+		4 and
+		2 and / not (counts as one op ? two?)
+		
+	m loop: (happens num_cl * samples_per_block * 2 times (two vectors per i loop))
+		4 and
+		4 right shifts
+		
+		
+NOTE:
+SHOULD MAKE THE READ OUT INTO RESULTS MORE MODULAR TO AVOID WRITING BEYOND THE ARRAY IF THERE ARENT enough samples to fill out all of the blocks in every cacheline block.
+either that, or pad the results array to align with the numper of samples per cacheline block
+*/
 void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
-	
-	// printf("got here\n");
 
 	__m256i a1;
 	__m256i b1;
@@ -163,8 +191,7 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
 			// load correct vector
-			a1 = (__m256i) _mm256_load_ps(d + (i * 256) + j * 8);
-			
+			a1 = (__m256i) _mm256_loadu_pd(d + (i * 256) + j * 8);
 			
 			// GOOD WAY TO INSPECT __mXXX values
 			/*
@@ -180,23 +207,6 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			b1 = _mm256_srli_epi64(a1, 1);
 			//xor 
 			xor1 = _mm256_xor_si256(a1, b1);
-			/*
-			if(i == 0 && j == 31){
-				
-				uint64_t ap[4];
-				uint64_t ab[4];
-				uint64_t axor[4];
-				memcpy(ap, &a1, sizeof(ap));
-				memcpy(ab, &b1, sizeof(ab));
-				memcpy(axor, &xor1, sizeof(axor));
-				printf("a__: "); PRINT_64_B(ap[0]);
-				LINE;
-				printf("b__: "); PRINT_64_B(ab[0]);
-				LINE;
-				printf("xor: "); PRINT_64_B(axor[0]);
-				LINE;
-			}
-			*/
 			
 			//compute res
 			b1 = _mm256_and_si256 (xor1, b1); //xor & b
@@ -209,7 +219,7 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			
 			//now for second vector of the cache line
 			// load correct vector
-			a2 = (__m256i) _mm256_load_ps(d + (i * 256) + j * 8 + 4); // + 4 as 4 64 bit words per vector
+			a2 = (__m256i) _mm256_loadu_ps(d + (i * 256) + j * 8 + 4); // + 4 as 4 64 bit words per vector
 			
 			// shift right by one
 			b2 = _mm256_srli_epi64(a2, 1);
@@ -227,7 +237,6 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			
 		}
 		
-		// can't think of a way of doing it with just one shift for now
 		//printf("reach here");
 		// read results out 
 		uint64_t cres[4];
@@ -274,7 +283,7 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 		
 		// read results out 
 		uint64_t cres_2[4];
-		memcpy(cres_2, &res2, sizeof(cres));
+		memcpy(cres_2, &res2, sizeof(cres_2));
 		uint64_t cres02 = cres_2[0];
 		uint64_t cres12 = cres_2[1];
 		uint64_t cres22 = cres_2[2];
@@ -296,6 +305,7 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			//fourth
 			results[i * samples_per_cl + (4 + 3) * samples_per_block + m] = cres32 & 1;
 			cres32 = cres32 >> num_features;
+			//printf("SAMPLE NR: %i \n", i * samples_per_cl + (4 + 3) * samples_per_block + m);
 		}
 		
 		// reset temp and res
