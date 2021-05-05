@@ -22,6 +22,10 @@ void q1(uint32_t * data,uint32_t * dest,int rows,int cols){
 }
 
 
+// void (uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+
+// }
+
 void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
 	// printf("Got here q1_weave\n");
 	// printf("data=%lx,results=%lx,temps=%lx,wordsize=%d,blocksize=%d,num_fet=%d,num_samples=%d,num_entries=%d\n",data,results,temps,word_size,block_size,num_features,num_samples,number_entries);
