@@ -335,3 +335,27 @@ bool compare_rows_cols(uint32_t * x, uint32_t *y,size_t rows,size_t cols){
     }
     return res;
 }
+
+
+bool compare_join(uint32_t * x, uint32_t *y,size_t x_rows,size_t y_rows){
+    if(x_rows != y_rows){
+        
+        printf("Size of joins are" RED " NOT " RESET "equal: %u != %u\n",x_rows,y_rows);
+        return false;
+    }
+    for(size_t i = 0 ; i < x_rows; ++i){
+        bool found = false;
+        for(size_t j = 0; j < x_rows;++j){
+            if(x[i * 2] == y[j * 2] && x[i * 2 + 1] == y[j * 2 + 1]){
+                found = true;
+            }
+        }
+        if(!found){
+            printf("Output row %d was" RED " NOT " RESET "found in second result: (value = %u,%u)",x[i * 2], x[i * 2 + 1]);
+            return false;
+        }
+ 
+    }
+    return true;
+
+}

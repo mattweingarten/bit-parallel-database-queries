@@ -24,18 +24,20 @@ int main(int argc, char **argv) {
 	uint32_t* S =  generateDB(128,4,mod_gen);
 	uint32_t out_size = cartesian_product_size(256,2,128,4);
 
-	// uint32_t* res = (uint32_t * ) malloc(out_size * 2 * sizeof(uint32_t));
-	// size_t des_size;
-	// q3_index(R,S,res,&des_size,256,2,128,4);
-	// uint32_t* new_res =  realloc(res,des_size * 2 * sizeof(uint32_t));
-	// // PRINT_MALLOC(res,des_size,2);
+	uint32_t* res = (uint32_t * ) malloc(out_size * 2 * sizeof(uint32_t));
+	size_t des_size;
+	q3_index(R,S,res,&des_size,256,2,128,4);
+	uint32_t* new_res =  realloc(res,des_size * 2 * sizeof(uint32_t));
+	// PRINT_MALLOC(res,des_size,2);
 
-	// // uint32_t* res = (uint32_t * ) malloc(out_size * 2 * sizeof(uint32_t));
-	// uint32_t* res_q3 = (uint32_t * ) malloc(out_size * 2 * sizeof(uint32_t));
-	// uint32_t des_size2;
-	// q3_index(R,S,res_q3,&des_size2,256,2,128,4);
-	// // PRINT_MALLOC(res)
-	// printf("Outsize : %d, %d", des_size,des_size2);
+	// uint32_t* res = (uint32_t * ) malloc(out_size * 2 * sizeof(uint32_t));
+	uint32_t* res_q3 = (uint32_t * ) malloc(out_size * 2 * sizeof(uint32_t));
+	uint32_t des_size2;
+	q3_index(R,S,res_q3,&des_size2,256,2,128,4);
+	PRINT_MALLOC(res_q3,des_size2,2);
+	printf("Outsize : %d, %d\n", des_size,des_size2);
+
+	compare_join(res_q3,res_q3,des_size2,des_size2);
 
 	// uint32_t* results = malloc(256 * sizeof(uint32_t));
     // uint32_t *temps = malloc(256 * sizeof(uint32_t));
