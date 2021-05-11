@@ -44,7 +44,7 @@ int main(int argc, char **argv) {
 	// q3_blocked()
 	uint32_t des_size3;
 
-	q3_weave_index(R_weave,S_weave,res_q3_weave,&des_size3,NULL,NULL,256,2,128,4,32,16);
+	q3_weave_index(R_weave,S_weave,res_q3_weave,&des_size3,256,2,128,4,32,16);
 
 	bool correct = compare_join(res_q3,res_q3_weave,des_size2,des_size3);
 	printf("Correct : %d\n",correct);
