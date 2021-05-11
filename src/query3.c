@@ -157,3 +157,67 @@ void q3_weave(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows,uin
 	}
 	*dest_rows = dest_index;
 }
+
+
+void q3_weave_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows,uint32_t *R_buffer, uint32_t *S_buffer, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
+	size_t cl_block_size = wordsize * cl_size;
+
+	size_t dest_index = 0;
+	size_t dest_cols = R_cols + S_cols;
+
+	size_t R_cl_index;
+	size_t R_samples_per_entry = 32 / R_cols;
+	size_t R_samples_per_cl = cl_size * R_samples_per_entry;
+
+	size_t S_cl_index;
+	size_t S_samples_per_entry = 32 / S_cols;
+	size_t S_samples_per_cl = cl_size * S_samples_per_entry;
+	
+
+
+	uint32_t R_a;
+	uint32_t S_b;
+	uint32_t S_c;
+
+
+	for(size_t i = 0; i < R_rows; ++i){
+
+		R_a = 0;
+		size_t R_cl_block_index = (i * R_cols) / cl_block_size;
+		size_t R_cl_index = (i % R_samples_per_cl) / R_samples_per_entry; 
+		size_t R_shift_index = (i % R_samples_per_entry) * R_cols;
+		
+
+
+		for(size_t k = 0;k < wordsize; ++k){
+			size_t R_i_index = R_cl_block_index * cl_block_size + k * cl_size + R_cl_index;
+			uint32_t kth_bit_of_R_a = (dR[R_i_index] >> R_shift_index ) &1;
+			R_a += kth_bit_of_R_a << (wordsize - k - 1);
+	
+		}
+		for(size_t j = 0; j < S_rows;++j){
+			S_b = 0;
+			S_c = 0;
+			size_t S_cl_block_index = (j * S_cols) / cl_block_size;
+			size_t S_cl_index = (j % S_samples_per_cl) / S_samples_per_entry; 
+			size_t S_shift_index = (j % S_samples_per_entry) * S_cols;
+
+			for(size_t l = 0; l < wordsize; ++l){
+
+				size_t S_j_index = S_cl_block_index * cl_size * wordsize + l * cl_size + S_cl_index;
+
+				uint32_t lth_bit_of_S_b = (dS[S_j_index] >> (S_shift_index + 1)) & 1;
+				uint32_t lth_bit_of_S_c = (dS[S_j_index] >> (S_shift_index + 2)) & 1;
+				S_b += (lth_bit_of_S_b << (wordsize - l - 1));
+				S_c += (lth_bit_of_S_c << (wordsize - l - 1));
+			}
+
+			if(S_b != 0 && R_a % S_b == S_c){
+				dest[dest_index * 2] = i;
+				dest[dest_index * 2 + 1] = j;
+				dest_index++;
+			}
+		}
+	}
+	*dest_rows = dest_index;
+}
