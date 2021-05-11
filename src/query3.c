@@ -51,6 +51,28 @@ void q3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, int R_ro
 }
 
 
+void q3_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols){
+	size_t dest_row = 0;
+	size_t dest_col = 2;
+	uint32_t R_a;
+	uint32_t S_b;
+	uint32_t S_c;
+	for(size_t  i = 0; i < R_rows; i++){
+		for(size_t j = 0 ; j < S_rows; j++){
+			R_a = dR[i * R_cols + 0];
+			S_b = dS[j * S_cols + 1];
+			S_c = dS[j * S_cols + 2];
+			if(S_b != 0 && R_a % S_b == S_c){
+				dest[dest_row * dest_col] = i;
+				dest[dest_row * dest_col  + 1] = j;
+				dest_row++;
+			}
+		}
+	}
+	*dest_rows = dest_row;
+}
+
+
 
 // we assume for now that R and S have the same weaving parameters
 void q3_weave(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows,uint32_t *R_buffer, uint32_t *S_buffer, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){

@@ -24,6 +24,18 @@ int main(int argc, char **argv) {
 	uint32_t* S =  generateDB(128,4,mod_gen);
 	uint32_t out_size = cartesian_product_size(256,2,128,4);
 
+	// uint32_t* res = (uint32_t * ) malloc(out_size * 2 * sizeof(uint32_t));
+	// size_t des_size;
+	// q3_index(R,S,res,&des_size,256,2,128,4);
+	// uint32_t* new_res =  realloc(res,des_size * 2 * sizeof(uint32_t));
+	// // PRINT_MALLOC(res,des_size,2);
+
+	// // uint32_t* res = (uint32_t * ) malloc(out_size * 2 * sizeof(uint32_t));
+	// uint32_t* res_q3 = (uint32_t * ) malloc(out_size * 2 * sizeof(uint32_t));
+	// uint32_t des_size2;
+	// q3_index(R,S,res_q3,&des_size2,256,2,128,4);
+	// // PRINT_MALLOC(res)
+	// printf("Outsize : %d, %d", des_size,des_size2);
 
 	// uint32_t* results = malloc(256 * sizeof(uint32_t));
     // uint32_t *temps = malloc(256 * sizeof(uint32_t));
@@ -83,9 +95,9 @@ int main(int argc, char **argv) {
 
 	// bool correct = test_q3(&q3_weave,&asc_gen,&asc_gen,256,4,256,4);
 	// printf("Result of test: %d\n",correct);
-	validate_query((void*) &q1_weave,Q1);
-	validate_query((void*) &q1_vector_weave,Q1);
-	validate_query((void*) &q1_parallel_weave,Q1);
+	// validate_query((void*) &q1_weave,Q1);
+	// validate_query((void*) &q1_vector_weave,Q1);
+	// validate_query((void*) &q1_parallel_weave,Q1);
 	// validate_query((void*) &q2_weave, Q2);
 	// validate_query((void* ) &q3_weave,Q3);
 
@@ -98,6 +110,6 @@ int main(int argc, char **argv) {
 	
 	//performance_rnd_query((void*) &q1_parallel_weave, Q1);
 	
-	performance_rnd_query((void*) &q2_weave, Q2);
+	// performance_rnd_query((void*) &q2_weave, Q2);
 	return 0;
 }
