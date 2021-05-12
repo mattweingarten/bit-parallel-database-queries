@@ -60,6 +60,245 @@ void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,i
     }
 }
 
+
+// can't do block optimization since we load data in series basically (per cache line!)
+/*
+we have spatial locality (for data and for results / temps)
+maybe we can keep a / b in a local variable for an entire chunk_index
+compute the feature index cheaper?
+
+maybe can unroll for samples per word
+
+ASSUME 4 FEATURES PER WORD SO IT ALIGNS NICELY.. otherwise a sample over 31 -> 3x bits will break
+*/
+
+//easier indexing (no modulo / division)
+// data only loaded once per word
+void q1_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+
+    int chunk_index;
+	int feature_index;
+	uint32_t a;
+	uint32_t b;
+	uint32_t xor;
+
+    int samples_per_word = word_size / num_features;
+	int samples_per_block = block_size / num_features;
+	// block_size == 512
+    int num_blocks = ceil(number_entries / block_size);
+    int rows_per_block = block_size / word_size;
+	// rows_per_block == 16
+    int cols_per_block = word_size;
+	// word size = 32
+
+    for(int k = 0; k < num_blocks;k++){
+        for(int j = 0; j < word_size;++j){ 
+			for(int m = 0; m < rows_per_block; m++){
+				uint32_t load = data[k * block_size + rows_per_block * j  + m];
+				for(int i = 0; i < samples_per_word; i++){
+					a = (load >> (i * num_features)) & 1;
+					b = (load >> (i * num_features + 1)) & 1;
+					xor = a ^ b;
+					results[k * samples_per_block + i + m * samples_per_word] = results[k * samples_per_block + i + m * samples_per_word] | ((xor & b) & (!temps[k * samples_per_block + i + m * samples_per_word]));
+                temps[k * samples_per_block + i + m * samples_per_word] = temps[k * samples_per_block + i + m * samples_per_word] | (xor & a);
+					
+				}
+            } 
+	    }
+    }
+}
+
+// save redoing a bunch of index computations and simplify the mults to adds
+void q1_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+
+    int chunk_index;
+	int feature_index;
+	uint32_t a;
+	uint32_t b;
+	uint32_t xor;
+
+    int samples_per_word = word_size / num_features;
+	int samples_per_block = block_size / num_features;
+	// block_size == 512
+    int num_blocks = ceil(number_entries / block_size);
+    int rows_per_block = block_size / word_size;
+	// rows_per_block == 16
+    int cols_per_block = word_size;
+	// word size = 32
+	
+	size_t res_idx = 0; // counts for k loop in samples
+	size_t data_index_s = 0; // counts k loop in words
+    for(int k = 0; k < num_blocks;k++){
+		size_t j_idx = 0; // rows per block
+        for(int j = 0; j < word_size;++j){
+			size_t cres_idx = res_idx; // k * samples_per_block
+			for(int m = 0; m < rows_per_block; m++){
+				uint32_t load = data[data_index_s + j_idx + m];
+				int bit_shift = 0;
+				for(int i = 0; i < samples_per_word; i++){
+					size_t ci = cres_idx + i;
+					a = (load >> (bit_shift)) & 1;
+					b = (load >> (bit_shift + 1)) & 1;
+					xor = a ^ b;
+					results[ci] = results[ci] | ((xor & b) & (!temps[ci]));
+                temps[ci] = temps[ci] | (xor & a);
+					bit_shift += num_features; // i * num_features
+				}
+				cres_idx += samples_per_word; // + samples_per_word * m
+            }
+			j_idx += rows_per_block;	
+	    }
+		data_index_s += block_size;
+		res_idx += samples_per_block;
+    }
+}
+
+// scalar replacement
+void q1_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+	/*
+	if(num_features % 4 != 0 || num_features > 32){
+		printf("can't handle num_features: %i! \n", num_features);
+		return;
+	}
+	*/
+    int chunk_index;
+	int feature_index;
+	uint32_t a;
+	uint32_t b;
+	uint32_t xor;
+
+    int samples_per_word = word_size / num_features;
+	int samples_per_block = block_size / num_features;
+	// block_size == 512
+    int num_blocks = ceil(number_entries / block_size);
+    int rows_per_block = block_size / word_size;
+	// rows_per_block == 16
+    int cols_per_block = word_size;
+	// word size = 32
+	
+	size_t res_idx = 0; // counts for k loop in samples
+	size_t data_index_s = 0; // counts k loop in words
+    for(int k = 0; k < num_blocks;k++){
+		size_t j_idx = 0; // rows per block
+        for(int j = 0; j < word_size;++j){
+			size_t cres_idx = res_idx; // k * samples_per_block
+			for(int m = 0; m < rows_per_block; m++){
+				uint32_t load = data[data_index_s + j_idx + m];
+				int bit_shift = 0;
+				for(int i = 0; i < samples_per_word; i++){
+					
+					size_t ci = cres_idx + i;
+					uint32_t ctemp = temps[ci];
+					
+					a = (load >> (bit_shift)) & 1;
+					b = (load >> (bit_shift + 1)) & 1;
+					xor = a ^ b;
+					uint32_t xora = xor & a;
+					uint32_t xorb = xor & b;
+					uint32_t andnotb = xorb & (!ctemp); 
+					results[ci] |= andnotb;
+					temps[ci] = ctemp | xora;
+					bit_shift += num_features; // i * num_features
+				}
+				cres_idx += samples_per_word; // + samples_per_word * m
+            }
+			j_idx += rows_per_block;	
+	    }
+		data_index_s += block_size;
+		res_idx += samples_per_block;
+    }
+}
+
+// unroll for four samples at once.. bug somewhere
+void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+	
+	if(num_features % 4 != 0 || num_features > 32){
+		printf("can't handle num_features: %i! \n", num_features);
+		return;
+	}
+	
+    int chunk_index;
+	int feature_index;
+
+    int samples_per_word = word_size / num_features;
+	int samples_per_block = block_size / num_features;
+	// block_size == 512
+    int num_blocks = ceil(number_entries / block_size);
+    int rows_per_block = block_size / word_size;
+	// rows_per_block == 16
+    int cols_per_block = word_size;
+	// word size = 32
+	
+	size_t res_idx = 0; // counts for k loop in samples
+	size_t data_index_s = 0; // counts k loop in words
+    for(int k = 0; k < num_blocks;k++){
+		size_t j_idx = 0; // rows per block
+        for(int j = 0; j < word_size;++j){
+			size_t cres_idx = res_idx; // k * samples_per_block
+			for(int m = 0; m < rows_per_block; m++){
+				uint32_t load = data[data_index_s + j_idx + m];
+				int bit_shift = 0;
+				for(int i = 0; i < samples_per_word; i += 4){
+					
+					size_t c0 = cres_idx;
+					size_t c2 = cres_idx + 2;
+					uint32_t ctemp0 = temps[c0];
+					uint32_t ctemp1 = temps[c0 + 1];
+					uint32_t ctemp2 = temps[c2];
+					uint32_t ctemp3 = temps[c2 + 1];
+					
+					uint32_t a0 = (load >> (bit_shift)) & 1;
+					uint32_t b0 = (load >> (bit_shift + 1)) & 1;
+					uint32_t xor0 = a0 ^ b0;
+					uint32_t xora0 = xor0 & a0;
+					uint32_t xorb0 = xor0 & b0;
+					uint32_t andnotb0 = xorb0 & (!ctemp0); 
+					results[c0] |= andnotb0;
+					temps[c0] = ctemp0 | xora0;
+					
+					
+					uint32_t a1 = (load >> (bit_shift + num_features)) & 1;
+					uint32_t b1 = (load >> (bit_shift + num_features + 1)) & 1;
+					uint32_t xor1 = a1 ^ b1;
+					uint32_t xora1 = xor1 & a1;
+					uint32_t xorb1 = xor1 & b1;
+					uint32_t andnotb1 = xorb1 & (!ctemp1); 
+					results[c0 + 1] |= andnotb1;
+					temps[c0 + 1] = ctemp1 | xora1;
+					
+					int bit_shift2 = bit_shift + 2 * num_features;
+					uint32_t a2 = (load >> (bit_shift2)) & 1;
+					uint32_t b2 = (load >> (bit_shift2 + 1)) & 1;
+					uint32_t xor2 = a2 ^ b2;
+					uint32_t xora2 = xor2 & a2;
+					uint32_t xorb2 = xor2 & b2;
+					uint32_t andnotb2 = xorb2 & (!ctemp2); 
+					results[c2] |= andnotb2;
+					temps[c2] = ctemp2 | xora2;
+					
+					
+					uint32_t a3 = (load >> (bit_shift2 + num_features)) & 1;
+					uint32_t b3 = (load >> (bit_shift2 + num_features + 1)) & 1;
+					uint32_t xor3 = a3 ^ b3;
+					uint32_t xora3 = xor3 & a3;
+					uint32_t xorb3 = xor3 & b3;
+					uint32_t andnotb3 = xorb3 & (!ctemp3); 
+					results[c2 + 1] |= andnotb3;
+					temps[c2 + 1] = ctemp3 | xora3;
+					
+					
+					bit_shift += 4 * num_features; // i * num_features
+				}
+				cres_idx += samples_per_word; // + samples_per_word * m
+            }
+			j_idx += rows_per_block;	
+	    }
+		data_index_s += block_size;
+		res_idx += samples_per_block;
+    }
+}
+
+
 void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
 	
 	// b == a >> 1

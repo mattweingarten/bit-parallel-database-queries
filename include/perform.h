@@ -1,7 +1,7 @@
 #ifndef PERFORM
 #define PERFORM 
 
-#include <bits/stdint-uintn.h>
+//#include <bits/stdint-uintn.h>
 #include <stdint.h> 
 #include <stddef.h>
 #include <stdlib.h>
