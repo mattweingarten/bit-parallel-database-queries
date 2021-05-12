@@ -17,13 +17,13 @@
 
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
-void performance_rnd_query(void* query, enum Query type){
+void performance_rnd_query(void* query, enum Query type,char * out_file_name){
     generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
     size_t row_sizes[5] = {128,256,512,2048,32768};
     size_t cols_sizes[4] = {4,8,16,32};
     //bool correct;
-		double cycles;
-		int cyc;
+	double cycles;
+	int cyc;
     size_t count_correct = 0;
     size_t count = 0;
 		
@@ -32,32 +32,30 @@ void performance_rnd_query(void* query, enum Query type){
         for(int j = 0; j < 5; j++){
             for(int k = 0;k < 4;k++){
                 bool correct;
-
                 switch (type)
                 {
                 case Q1:
-										cycles = perf_test_q1((q1_t) query ,generators[i],row_sizes[j],cols_sizes[k]);
-										cyc = cycles;
-										if(PRINT_CYCLES)
-											printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d\n",cyc, type + 1,row_sizes[j],cols_sizes[k],i);
-										saveCycledataToFile("./q1_cycles.csv",cycles,row_sizes[j],cols_sizes[k],i);
+					cycles = perf_test_q1((q1_t) query ,generators[i],row_sizes[j],cols_sizes[k]);
+					cyc = cycles;
+					if(PRINT_CYCLES)
+						printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d\n",cyc, type + 1,row_sizes[j],cols_sizes[k],i);
+					saveCycledataToFile("./q1_cycles.csv",cycles,row_sizes[j],cols_sizes[k],i);
                     break;
                 case Q2:
-										cycles = perf_test_q2((q2_t) query ,generators[i],row_sizes[j],cols_sizes[k]);
-										cyc = cycles;
-										if(PRINT_CYCLES)
-											printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d\n",cyc, type + 1,row_sizes[j],cols_sizes[k],i);
-										saveCycledataToFile("./q2_cycles.csv",cycles,row_sizes[j],cols_sizes[k],i);
+					cycles = perf_test_q2((q2_t) query ,generators[i],row_sizes[j],cols_sizes[k]);
+					cyc = cycles;
+					if(PRINT_CYCLES)
+						printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d\n",cyc, type + 1,row_sizes[j],cols_sizes[k],i);
+					saveCycledataToFile("./q2_cycles.csv",cycles,row_sizes[j],cols_sizes[k],i);
                     break;
                 case Q3:
                     printf(" Test for q%d  with R_rows = %d, R_cols = %d, R_gen = randgen, S_rows = %d, S_cols = %d,S_gen=mod_gen\n",type  + 1,row_sizes[j],cols_sizes[k],row_sizes[j % 2],cols_sizes[k % 2]);
                     break;
+
                 default:
                     printf("Invalid query type!\n");
                     break;
                 }
-
-
             }
         }
     }
@@ -72,8 +70,8 @@ double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
 		int64_t start,end;
 		double cycles = 0.;
 		
-		uint32_t* results = malloc(rows * sizeof(uint32_t));
-		uint32_t *temps = malloc(rows * sizeof(uint32_t));
+		uint32_t* results = aligned_alloc( 32, rows * sizeof(uint32_t));
+		uint32_t *temps = aligned_alloc( 32, rows * sizeof(uint32_t));
 		for(size_t i = 0 ; i < rows; ++i ){
 				results[i]  = 0;
 				temps[i] = 0;
@@ -99,9 +97,9 @@ double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
 		//calculation
 
 		start = start_tsc();
-    for(size_t i = 0; i < N_PERFORMANCE_INTERATION; ++i){
-			q(ml,results,temps,32,512,rows,cols,numEntries);
-    }
+		for(size_t i = 0; i < N_PERF_ITERATION; ++i){
+				q(ml,results,temps,32,512,rows,cols,numEntries);
+		}
 		end = stop_tsc(start);
 		correct = correct && compare(results,gt,rows);
 		if(correct)
@@ -115,7 +113,7 @@ double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
 		free(results);
 		free(temps);
 		
-		cycles = ((double)end) / N_PERFORMANCE_INTERATION;
+		cycles = ((double)end) / N_PERF_ITERATION;
 
     return cycles;
 }
@@ -123,186 +121,135 @@ double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
 
 double perf_test_q2(q2_t q,generator gen,size_t rows,size_t cols){
     bool correct = true;
-		int64_t start,end;
-		double cycles = 0.;
-		uint32_t * db = generateDB(rows,cols,gen);
-		uint64_t  gt =  q2_groundtruth(db,rows,cols);
-		uint32_t * ml = weave_samples_wrapper(db,rows,cols);
+	int64_t start,end;
+	double cycles = 0.;
+	uint32_t * db = generateDB(rows,cols,gen);
+	uint64_t  gt =  q2_groundtruth(db,rows,cols);
+	uint32_t * ml = weave_samples_wrapper(db,rows,cols);
 
 
     uint32_t samples_per_block = 512 / cols;
-    uint32_t * cond_buffer = malloc(samples_per_block * sizeof(uint32_t));
-    uint32_t * temp_buffer = malloc(samples_per_block * sizeof(uint32_t));
-    uint32_t * sum_buffer = malloc(samples_per_block * sizeof(uint32_t));
+    uint32_t * cond_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
+    uint32_t * temp_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
+    uint32_t * sum_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
     size_t numEntries = numberOfEntries(rows,cols);
-		uint64_t res;
+	uint64_t res;
 		
-		/// Warmup
+	/// Warmup
 		
-		start = start_tsc();
-		for(size_t i = 0; i < N_WARMUP || end * i < 1e8; ++i){
-				memset(cond_buffer,0,samples_per_block*4);
-				memset(temp_buffer,0,samples_per_block*4);
-				memset(sum_buffer,0,samples_per_block*4);
-				res = q(ml,cond_buffer,temp_buffer,sum_buffer,32,512,rows,cols,numEntries);
-        correct = correct && res == gt;
-				end = stop_tsc( start);
-		}
-		
-		if(correct)
-			printf("Warmup correct: TRUE \n");
-		else
-			printf("Warmup correct: FALSE \n");
-    
-		//calculation
-
-		start = start_tsc();
-    for(size_t i = 0; i < N_PERFORMANCE_INTERATION; ++i){
-				memset(cond_buffer,0,samples_per_block*4);
-				memset(temp_buffer,0,samples_per_block*4);
-				memset(sum_buffer,0,samples_per_block*4);
-				res = q(ml,cond_buffer,temp_buffer,sum_buffer,32,512,rows,cols,numEntries);
-    }
-		end = stop_tsc(start);
+	start = start_tsc();
+	for(size_t i = 0; i < N_WARMUP || end * i < 1e8; ++i){
+		memset(cond_buffer,0,samples_per_block*4);
+		memset(temp_buffer,0,samples_per_block*4);
+		memset(sum_buffer,0,samples_per_block*4);
+		res = q(ml,cond_buffer,temp_buffer,sum_buffer,32,512,rows,cols,numEntries);
 		correct = correct && res == gt;
-		if(correct)
-			printf("Run correct: TRUE \n");
-		else
-			printf("Run correct: FALSE \n");
+		end = stop_tsc( start);
+	}
+	
+	if(correct)
+		printf("Warmup correct: TRUE \n");
+	else
+		printf("Warmup correct: FALSE \n");
+
+	//calculation
+
+	start = start_tsc();
+    for(size_t i = 0; i < N_PERF_ITERATION; ++i){
+		memset(cond_buffer,0,samples_per_block*4);
+		memset(temp_buffer,0,samples_per_block*4);
+		memset(sum_buffer,0,samples_per_block*4);
+		res = q(ml,cond_buffer,temp_buffer,sum_buffer,32,512,rows,cols,numEntries);
+    }
+	end = stop_tsc(start);
+	correct = correct && res == gt;
+	if(correct)
+		printf("Run correct: TRUE \n");
+	else
+		printf("Run correct: FALSE \n");
 
     free(cond_buffer);
     free(temp_buffer);
     free(sum_buffer);
-		free(db);
-		free(ml);
-		cycles = ((double)end) / N_PERFORMANCE_INTERATION;
+	free(db);
+	free(ml);
+	cycles = ((double)end) / N_PERF_ITERATION;
 
     return cycles;
 }
 
-//
-//bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols){
-//    bool correct = true;
-//    for(size_t i = 0; i < N_RUNS;++i){
-//        uint32_t* R = generateDB(R_rows,R_cols,R_gen);
-//        uint32_t* S = generateDB(S_rows,S_cols,S_gen);
-//        uint32_t * R_weave = weave_samples_wrapper(R,R_rows,R_cols);
-//        uint32_t * S_weave = weave_samples_wrapper(S,S_rows,S_cols);
-//
-//        // PRINT_MALLOC(R,R_rows,R_cols);
-//        uint32_t gt_out_size = cartesian_product_size(R_rows,R_cols,S_rows,S_cols);
-//
-//        size_t out_cols = R_cols + S_cols;
-//
-//        uint32_t* gt = (uint32_t*) malloc(gt_out_size * sizeof(uint32_t));
-//        q3(R,S,gt,&gt_out_size,R_rows,R_cols,S_rows,S_cols);
-//        free(R);
-//        free(S);
-//        uint32_t* re_gt = realloc(gt,gt_out_size * out_cols *  sizeof(uint32_t));
-//
-//
-//        
-//
-//        uint32_t comp_out_size = cartesian_product_size(R_rows,R_cols,S_rows,S_cols);
-//        uint32_t* comp = (uint32_t*) malloc(comp_out_size * sizeof(uint32_t));
-//        uint32_t* R_buffer = (uint32_t*) malloc(R_cols * sizeof(uint32_t));
-//        uint32_t* S_buffer = (uint32_t*) malloc(S_cols * sizeof(uint32_t)); 
-//        q(R_weave,S_weave,comp,&comp_out_size,R_buffer,S_buffer,R_rows,R_cols,S_rows,S_cols,32,16);
-//
-//        uint32_t* re_comp = realloc(comp,comp_out_size * out_cols *  sizeof(uint32_t));
-//
-//        correct = correct && compare_rows_cols(gt,comp,MAX(comp_out_size,gt_out_size),out_cols);
-//        correct = correct && gt_out_size == comp_out_size;
-//        
-//        
-//        // printf("Correct: %d => Real_size=%d, got_size=%d\n",correct,gt_out_size,comp_out_size);
-//
-//
-//        // PRINT_MALLOC(re_gt,gt_out_size,out_cols);
-//        // PRINT_MALLOC(re_gt,gt_out_size,out_cols);
-//
-//        free(R_weave);
-//        free(S_weave);
-//        free(R_buffer);
-//        free(S_buffer);
-//        free(re_comp);
-//        free(re_gt);
-//    }
-//    return correct;
-//}
-//
-//
-//
-//uint64_t q2_wrapper(q2_t q,uint32_t* data,size_t rows,size_t cols){
-//    uint32_t samples_per_block = 512 / cols;
-//    uint32_t * cond_buffer = malloc(samples_per_block * sizeof(uint32_t));
-//    uint32_t * temp_buffer = malloc(samples_per_block * sizeof(uint32_t));
-//    uint32_t * sum_buffer = malloc(samples_per_block * sizeof(uint32_t));
-//    memset(cond_buffer,0,samples_per_block*4);
-//	memset(temp_buffer,0,samples_per_block*4);
-//	memset(sum_buffer,0,samples_per_block*4);
-//    size_t numEntries = numberOfEntries(rows,cols);
-//    uint64_t res = q(data,cond_buffer,temp_buffer,sum_buffer,32,512,rows,cols,numEntries);
-//    free(cond_buffer);
-//    free(temp_buffer);
-//    free(sum_buffer);
-//    return res;
-//}
-//
-//
-//// void q3_wrapper(q3_t q,uint32_t *data,size_t rows,size_t cols){
-////     uint32_t 
-//// }
-//
-//bool compare(uint32_t * x, uint32_t *y,size_t n){
-//    bool res = true;
-//    for(int i = 0; i < n; ++i){
-//        res = res && (x[i] == y[i]);
-//    }
-//    return res;
-//}
-//
-//
-//
-//
-//
-//bool compare_rows_cols(uint32_t * x, uint32_t *y,size_t rows,size_t cols){
-//    bool res = true;
-//    printf("Got here\n");
-//    for(int i = 0; i < rows; ++i){
-//        // bool row_res = true;
-//        for(int j = 0; j < cols;++j){
-//            uint32_t xij = x[i * cols + j];
-//            uint32_t yij =  y[i * cols + j];
-//            res = res && xij == yij;
-//            // row_res = row_res && xij == yij;
-//
-//        }
-//        if(true){
-//            printf("[%d] =>",i);
-//            for(int j = 0; j < cols; ++j){
-//                uint32_t xij = x[i * cols + j];
-//                uint32_t yij =  y[i * cols + j];
-//                printf(" %u ",xij);
-//            }
-//            for(int j = 0; j < cols; ++j){
-//                uint32_t xij = x[i * cols + j];
-//                uint32_t yij =  y[i * cols + j];
-//                if(xij == yij){
-//                    printf(GRN " %u " RESET ,yij);
-//                }else{
-//                    printf(RED " %u " RESET ,yij);
-//                }
-//                    
-//            }
-//            printf("\n");
-//            
-//        }
-//    }
-//    return res;
-//
-//}
-//
+
+
+
+
+double perf_test_q3(q3_t q,generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols){
+
+	int64_t start,end;
+	double cycles = 0.;
+	uint32_t* R = generateDB(R_rows,R_cols,R_gen);
+	uint32_t* S = generateDB(S_rows,S_cols,S_gen);
+	uint32_t * R_weave = weave_samples_wrapper(R,R_rows,R_cols);
+	uint32_t * S_weave = weave_samples_wrapper(S,S_rows,S_cols);
+	free(R);
+	free(S);
+	uint32_t res_out_size = cart_prod(R_rows,S_rows);
+	uint32_t* res = (uint32_t*) aligned_alloc( 32, res_out_size * 2 * sizeof(uint32_t));
+	q(R_weave,S_weave,res,&res_out_size,R_rows,R_cols,S_rows,S_cols,32,16);
+	uint32_t* re_res = realloc(res,res_out_size * 2 *  sizeof(uint32_t));
+	
+	// Warmup
+	start = start_tsc();
+	for(size_t i = 0; i < N_WARMUP || end * i < 1e8; ++i){
+		q(R_weave,S_weave,re_res,&res_out_size,R_rows,R_cols,S_rows,S_cols,32,16);
+		end = stop_tsc(start);
+	}
+
+
+	//calculation
+
+	start = start_tsc();
+	for(size_t i = 0; i < N_PERF_ITERATION; ++i){
+		// printf("Calulating %d\n",i);
+		q(R_weave,S_weave,re_res,&res_out_size,R_rows,R_cols,S_rows,S_cols,32,16);
+	}
+
+	end = stop_tsc(start);
+
+	free(R_weave);
+	free(S_weave);
+	free(re_res);
+	
+	return ((double)end) / N_PERF_ITERATION;
+}
+
+
+
+void perf_q3_R_rows(char* filename, q3_t q,generator gen,size_t R_row_max, size_t step_size,size_t R_cols,size_t S_rows, size_t S_cols){
+	for(size_t i = step_size; i <= R_row_max;i += step_size){
+		double cycles = perf_test_q3(q,gen,gen,i,R_cols,S_rows,S_cols);
+		saveCycledataToFile_q3(filename,cycles,i,R_cols,S_rows,S_cols);
+		printf("Cycles for rows = %d => %lf\n",i,cycles);
+	}
+}
+
+
+
+
+
+void saveCycledataToFile_q3( char* filename,double cycles, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols){
+
+   char buf[1024];
+   strcpy(buf, Q3_PATH );
+   strcat(buf,filename);
+   FILE *fptr;
+   fptr = fopen(buf,"a");
+   if(fptr == NULL)
+   {
+      printf("ERROR: cannot write to file!\n");   
+   }
+   fprintf(fptr,"%lf, %d, %d, %d, %d\n",cycles,R_rows,R_cols,S_rows,S_cols);
+   fclose(fptr);
+}
 
 
 void saveCycledataToFile( char* filename,size_t cycles, size_t rows, size_t cols, size_t gen){

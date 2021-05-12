@@ -181,51 +181,47 @@ bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols
         uint32_t* R = generateDB(R_rows,R_cols,R_gen);
         uint32_t* S = generateDB(S_rows,S_cols,S_gen);
 
-        // PRINT_MALLOC(S,S_rows,S_cols);
+        // PRINT_aligned_alloc( 32, S,S_rows,S_cols);
         // HLINE;
 
         // PRINT_MALLOC(R,R_rows,R_cols);
+        // PRINT_MALLOC(S,S_rows,S_cols);
+        // PRINT_aligned_alloc( 32, R,R_rows,R_cols);
         // HLINE;
 
         uint32_t * R_weave = weave_samples_wrapper(R,R_rows,R_cols);
         uint32_t * S_weave = weave_samples_wrapper(S,S_rows,S_cols);
+        // PRINT_WEAVED(R_weave,256,4);
+        // HLINE;
+        // PRINT_aligned_alloc( 32, R,R_rows,R_cols);
+        uint32_t gt_out_size = cart_prod(R_rows,S_rows);
+        uint32_t* gt = (uint32_t*) aligned_alloc( 32, gt_out_size * 2 * sizeof(uint32_t));
 
-        // PRINT_MALLOC(R,R_rows,R_cols);
-        uint32_t gt_out_size = cartesian_product_size(R_rows,R_cols,S_rows,S_cols);
+        q3_index(R,S,gt,&gt_out_size,R_rows,R_cols,S_rows,S_cols);
 
-        size_t out_cols = R_cols + S_cols;
-
-        uint32_t* gt = (uint32_t*) malloc(gt_out_size * sizeof(uint32_t));
-        q3(R,S,gt,&gt_out_size,R_rows,R_cols,S_rows,S_cols);
+        uint32_t* re_gt = realloc(gt,gt_out_size * 2 *  sizeof(uint32_t));
+        
         free(R);
         free(S);
-        uint32_t* re_gt = realloc(gt,gt_out_size * out_cols *  sizeof(uint32_t));
+
+        
 
 
         
 
-        uint32_t comp_out_size = cartesian_product_size(R_rows,R_cols,S_rows,S_cols);
-        uint32_t* comp = (uint32_t*) malloc(comp_out_size * sizeof(uint32_t));
-        uint32_t* R_buffer = (uint32_t*) malloc(R_cols * sizeof(uint32_t));
-        uint32_t* S_buffer = (uint32_t*) malloc(S_cols * sizeof(uint32_t)); 
-        q(R_weave,S_weave,comp,&comp_out_size,R_buffer,S_buffer,R_rows,R_cols,S_rows,S_cols,32,16);
+        uint32_t comp_out_size = cart_prod(R_rows,S_rows);
+        uint32_t* comp = (uint32_t*) aligned_alloc( 32, comp_out_size * 2 * sizeof(uint32_t));
 
-        uint32_t* re_comp = realloc(comp,comp_out_size * out_cols *  sizeof(uint32_t));
+        q(R_weave,S_weave,comp,&comp_out_size,R_rows,R_cols,S_rows,S_cols,32,16);
 
-        correct = correct && compare_rows_cols(gt,comp,MAX(comp_out_size,gt_out_size),out_cols);
-        correct = correct && gt_out_size == comp_out_size;
+        uint32_t* re_comp = realloc(comp,comp_out_size * 2 *  sizeof(uint32_t));
+
+        correct = compare_join(re_gt,re_comp,gt_out_size,comp_out_size);
         
-        
-        // printf("Correct: %d => Real_size=%d, got_size=%d\n",correct,gt_out_size,comp_out_size);
-
-
-        // PRINT_MALLOC(re_gt,gt_out_size,out_cols);
-        // PRINT_MALLOC(re_gt,gt_out_size,out_cols);
+    
 
         free(R_weave);
         free(S_weave);
-        free(R_buffer);
-        free(S_buffer);
         free(re_comp);
         free(re_gt);
     }
@@ -238,7 +234,7 @@ bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols
 //groundtruths
 
 uint32_t* q1_groundtruth(uint32_t* data,size_t rows,size_t cols){
-    uint32_t* res = malloc(rows * sizeof(uint32_t));
+    uint32_t* res = aligned_alloc( 32, rows * sizeof(uint32_t));
     q1(data,res,rows,cols);
     return res;
 }
@@ -252,8 +248,8 @@ uint64_t q2_groundtruth(uint32_t* data,size_t rows,size_t cols){
 
 uint32_t *q1_wrapper(q1_t q,uint32_t* data,size_t rows,size_t cols){
     
-    uint32_t* results = malloc(rows * sizeof(uint32_t));
-    uint32_t *temps = malloc(rows * sizeof(uint32_t));
+    uint32_t* results = aligned_alloc( 32, rows * sizeof(uint32_t));
+    uint32_t *temps = aligned_alloc( 32, rows * sizeof(uint32_t));
     
 
     for(size_t i = 0 ; i < rows; ++i ){
@@ -272,9 +268,9 @@ uint32_t *q1_wrapper(q1_t q,uint32_t* data,size_t rows,size_t cols){
 
 uint64_t q2_wrapper(q2_t q,uint32_t* data,size_t rows,size_t cols){
     uint32_t samples_per_block = 512 / cols;
-    uint32_t * cond_buffer = malloc(samples_per_block * sizeof(uint32_t));
-    uint32_t * temp_buffer = malloc(samples_per_block * sizeof(uint32_t));
-    uint32_t * sum_buffer = malloc(samples_per_block * sizeof(uint32_t));
+    uint32_t * cond_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
+    uint32_t * temp_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
+    uint32_t * sum_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
     memset(cond_buffer,0,samples_per_block*4);
 	memset(temp_buffer,0,samples_per_block*4);
 	memset(sum_buffer,0,samples_per_block*4);
@@ -351,7 +347,7 @@ bool compare_join(uint32_t * x, uint32_t *y,size_t x_rows,size_t y_rows){
             }
         }
         if(!found){
-            printf("Output row %d was" RED " NOT " RESET "found in second result: (value = %u,%u)",x[i * 2], x[i * 2 + 1]);
+            printf("Output row %u was" RED " NOT " RESET "found in second result: (value = %u,%u)\n",i,x[i * 2], x[i * 2 + 1]);
             return false;
         }
  

@@ -72,3 +72,7 @@ uint32_t* generateDB(size_t rows,size_t cols, generator gen){
 uint32_t cartesian_product_size(int R_rows, int R_cols, int S_rows, int S_cols){
 	return R_rows * S_rows * (R_cols + S_cols);
 }
+
+uint32_t cart_prod(size_t R_rows, size_t S_rows){
+    return R_rows * S_rows;
+}

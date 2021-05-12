@@ -163,7 +163,6 @@ void q3_weave_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_ro
 	size_t cl_block_size = wordsize * cl_size;
 
 	size_t dest_index = 0;
-	size_t dest_cols = R_cols + S_cols;
 
 	size_t R_cl_index;
 	size_t R_samples_per_entry = 32 / R_cols;
@@ -219,5 +218,87 @@ void q3_weave_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_ro
 			}
 		}
 	}
+	*dest_rows = dest_index;
+}
+
+
+void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
+
+
+
+
+	size_t dest_index = 0;
+
+	size_t cl_block_size = wordsize * cl_size;
+	
+	size_t R_num_cl_blocks = (R_rows * R_cols) / cl_block_size;  
+	size_t R_smpls_per_cl_block = cl_block_size / R_cols;
+	size_t R_samples_per_entry = 32 / R_cols;
+	size_t R_samples_per_cl = cl_size * R_samples_per_entry;
+
+	size_t S_num_cl_blocks = (S_rows * S_cols) / cl_block_size;
+	size_t S_smpls_per_cl_block = cl_block_size / S_cols;
+	size_t S_samples_per_entry = 32 / S_cols;
+	size_t S_samples_per_cl = cl_size * S_samples_per_entry;
+
+
+	uint32_t * R_a_buffer = (uint32_t *) aligned_alloc(32,R_smpls_per_cl_block * sizeof(uint32_t));
+	uint32_t * S_b_buffer = (uint32_t *) aligned_alloc(32,S_smpls_per_cl_block * sizeof(uint32_t));
+	
+	uint32_t * S_c_buffer = (uint32_t *) aligned_alloc(32,S_smpls_per_cl_block * sizeof(uint32_t));
+
+
+	for(size_t i = 0; i < R_num_cl_blocks; ++i){
+		memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
+		for(size_t k  = 0; k < wordsize;++k){
+			for(size_t m = 0; m < cl_size; ++m){
+				uint32_t next_word = dR[i * cl_block_size + k * cl_size + m];
+				for (size_t n = 0; n < R_samples_per_entry;++n){
+					uint32_t k_th_bit_R_a = (next_word >> (n * R_cols)) & 1;
+					R_a_buffer[m * R_samples_per_entry + n] += (k_th_bit_R_a << (wordsize - k - 1));
+				}
+			}
+		}
+
+
+		for(size_t j = 0; j < S_num_cl_blocks;++j){
+
+			memset(S_b_buffer,0,S_smpls_per_cl_block * 4);
+			memset(S_c_buffer,0,S_smpls_per_cl_block * 4);
+			for(size_t k  = 0 ; k < wordsize; ++k){
+				for (size_t m = 0; m < cl_size; ++m){
+					uint32_t next_word = dS[j * cl_block_size + k * cl_size + m];
+
+					if(i == 0){
+
+					}
+					for (size_t n = 0; n < S_samples_per_entry;++n){
+			
+						uint32_t k_th_bit_S_b = (next_word >> (n * S_cols + 1)) & 1;
+						uint32_t k_th_bit_S_c = (next_word >> (n * S_cols + 2)) & 1;
+
+						// TODO:  HERE WE WOULD ADD THE BIT BY BIT IMPLEMENTATION
+						S_b_buffer[m * S_samples_per_entry + n] += (k_th_bit_S_b << (wordsize - k - 1));
+						S_c_buffer[m * S_samples_per_entry + n] += (k_th_bit_S_c << (wordsize - k - 1));
+					}
+				}
+				
+			}
+			
+
+			// For now we do the actual join here:
+			for(size_t k = 0; k < R_smpls_per_cl_block; ++k){
+				for(size_t l = 0; l < S_smpls_per_cl_block; ++l){
+					if(S_b_buffer[l] != 0 && R_a_buffer[k] % S_b_buffer[l] == S_c_buffer[l]){
+						dest[2 * dest_index] = i * R_smpls_per_cl_block + k; 
+						dest[2 * dest_index + 1] = j * S_smpls_per_cl_block + l;
+						dest_index++;
+					} 
+				}
+			}
+
+		}
+	}
+	
 	*dest_rows = dest_index;
 }

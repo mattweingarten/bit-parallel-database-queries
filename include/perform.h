@@ -12,11 +12,14 @@
 
 
 // typedef uint32_t (*generator) (size_t,size_t); 
-#define N_PERFORMANCE_INTERATION 1000
-#define N_WARMUP 1000
+#define N_PERF_ITERATION 100
+#define N_WARMUP 10
 #define PRINT_CYCLES 1
 
-void performance_rnd_query(void* query, enum Query type);
+#define Q1_PATH "./runtimedata/q1/"
+#define Q2_PATH "./runtimedata/q2/"
+#define Q3_PATH "./runtimedata/q3/"
+void performance_rnd_query(void* query, enum Query type,char * out_file_name);
 
 /// assumes set up data vars
 //void performance_query(void* query, enum Query type);
@@ -25,8 +28,9 @@ void performance_rnd_query(void* query, enum Query type);
 
 double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols);
 double perf_test_q2(q2_t q,generator gen,size_t rows,size_t cols);
-//double perf_test_q3(q3_t, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols);
+double perf_test_q3(q3_t q,generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols);
 
 void saveCycledataToFile(char* filename,size_t cycles, size_t rows, size_t cols, size_t gen);
-
+void saveCycledataToFile_q3( char* filename,double cycles, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols);
+void perf_q3_R_rows(char* filename, q3_t q,generator gen,size_t R_row_max, size_t step_size,size_t R_cols,size_t S_rows, size_t S_cols);
 #endif 
