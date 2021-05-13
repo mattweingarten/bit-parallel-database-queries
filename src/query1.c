@@ -209,7 +209,8 @@ void q1_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
     }
 }
 
-// unroll for four samples at once.. bug somewhere
+// unroll for four samples at once..
+// possibly unroll to keep all temps and results in local variables ?
 void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
 	
 	if(num_features % 4 != 0 || num_features > 32){
@@ -229,6 +230,8 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
     int cols_per_block = word_size;
 	// word size = 32
 	
+	// case where we have 4 or more samples per word and unroll for the word
+	if(samples_per_word % 4 == 0 && samples_per_word >= 4){
 	size_t res_idx = 0; // counts for k loop in samples
 	size_t data_index_s = 0; // counts k loop in words
     for(int k = 0; k < num_blocks;k++){
@@ -239,9 +242,8 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 				uint32_t load = data[data_index_s + j_idx + m];
 				int bit_shift = 0;
 				for(int i = 0; i < samples_per_word; i += 4){
-					
-					size_t c0 = cres_idx;
-					size_t c2 = cres_idx + 2;
+					size_t c0 = cres_idx + i;
+					size_t c2 = c0 + 2;
 					uint32_t ctemp0 = temps[c0];
 					uint32_t ctemp1 = temps[c0 + 1];
 					uint32_t ctemp2 = temps[c2];
@@ -296,6 +298,76 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 		data_index_s += block_size;
 		res_idx += samples_per_block;
     }
+	// case of 16 features, unroll two words at once ?
+	} else if(samples_per_word == 2){
+	size_t res_idx = 0; // counts for k loop in samples
+	size_t data_index = 0; // counts k loop in words
+    for(int k = 0; k < num_blocks;k++){
+        for(int j = 0; j < word_size;++j){
+			size_t cres_idx = res_idx; // k * samples_per_block
+			for(int m = 0; m < rows_per_block; m += 2){
+				uint32_t load = data[data_index];
+				uint32_t load2 = data[data_index + 1];
+				
+				size_t c0 = cres_idx;
+				size_t c2 = c0 + 2;
+				uint32_t ctemp0 = temps[c0];
+				uint32_t ctemp1 = temps[c0 + 1];
+				uint32_t ctemp2 = temps[c2];
+				uint32_t ctemp3 = temps[c2 + 1];
+				
+				uint32_t a0 = load & 1;
+				uint32_t b0 = (load >> 1) & 1;
+				uint32_t xor0 = a0 ^ b0;
+				uint32_t xora0 = xor0 & a0;
+				uint32_t xorb0 = xor0 & b0;
+				uint32_t andnotb0 = xorb0 & (!ctemp0); 
+				results[c0] |= andnotb0;
+				temps[c0] = ctemp0 | xora0;
+				
+				
+				uint32_t a1 = (load >> num_features) & 1;
+				uint32_t b1 = (load >> (num_features + 1)) & 1;
+				uint32_t xor1 = a1 ^ b1;
+				uint32_t xora1 = xor1 & a1;
+				uint32_t xorb1 = xor1 & b1;
+				uint32_t andnotb1 = xorb1 & (!ctemp1); 
+				results[c0 + 1] |= andnotb1;
+				temps[c0 + 1] = ctemp1 | xora1;
+					
+				uint32_t a2 = load2 & 1;
+				uint32_t b2 = (load2 >> 1) & 1;
+				uint32_t xor2 = a2 ^ b2;
+				uint32_t xora2 = xor2 & a2;
+				uint32_t xorb2 = xor2 & b2;
+				uint32_t andnotb2 = xorb2 & (!ctemp2); 
+				results[c2] |= andnotb2;
+				temps[c2] = ctemp2 | xora2;
+				
+				
+				uint32_t a3 = (load2 >> (num_features)) & 1;
+				uint32_t b3 = (load2 >> (num_features + 1)) & 1;
+				uint32_t xor3 = a3 ^ b3;
+				uint32_t xora3 = xor3 & a3;
+				uint32_t xorb3 = xor3 & b3;
+				uint32_t andnotb3 = xorb3 & (!ctemp3); 
+				results[c2 + 1] |= andnotb3;
+				temps[c2 + 1] = ctemp3 | xora3;
+				
+				
+				cres_idx += 4; // + 2 words worth of 2 samples per word
+				data_index += 2;
+            }
+	    }
+		res_idx += samples_per_block;
+    }
+		
+		
+		
+	} else if(samples_per_word == 1){
+		//TODO
+		
+	}
 }
 
 
