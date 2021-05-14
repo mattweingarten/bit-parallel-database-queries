@@ -604,10 +604,439 @@ res can be either a bitvector or at least a vector of chars
 
 temp also only needs to be a char array (only need one bit!)
 
-use 64 bit words so we load less for each unrolled version
-
 then can optimize parallel & vector
+
+NEGLIGIBLE IMPROVEMENT OVER v5, maybe just remove this one
 */
+void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+	
+	if(num_features % 4 != 0 || num_features > 32){
+		printf("can't handle num_features: %i! \n", num_features);
+		return;
+	}
+	
+    int chunk_index;
+	int feature_index;
+
+    int samples_per_word = 64 / num_features;
+	int samples_per_block = block_size / num_features;
+	// block_size == 512
+    int num_blocks = ceil(number_entries / block_size);
+    int rows_per_block = block_size / 64;
+	// rows_per_block == 8
+    int cols_per_block = word_size;
+	// word size = 32
+	
+	//printf("spw: %i, spb: %i, nb: %i, cpb: %i \n", samples_per_word, samples_per_block, num_blocks, cols_per_block);
+	
+	uint64_t* d = data; // use 64 bit words!
+	
+	// case where we have 4 or more samples per word and unroll for the word
+	if(samples_per_word % 4 == 0 && samples_per_word > 4){
+	size_t res_idx = 0; // counts for k loop in samples
+	size_t data_index_s = 0; // counts k loop in words
+	
+	
+    for(int k = 0; k < num_blocks;k++){
+		size_t j_idx = 0; // rows per block
+        for(int j = 0; j < word_size;++j){
+			size_t cres_idx = res_idx; // k * samples_per_block
+			for(int m = 0; m < rows_per_block; m++){
+				uint64_t load = d[data_index_s + j_idx + m];
+				unsigned char bit_shift = 0;
+				for(int i = 0; i < samples_per_word; i += 4){
+					size_t c0 = cres_idx + i;
+					size_t c2 = c0 + 2;
+					unsigned char ctemp0 = temps[c0];
+					unsigned char ctemp1 = temps[c0 + 1];
+					unsigned char ctemp2 = temps[c2];
+					unsigned char ctemp3 = temps[c2 + 1];
+					
+					unsigned char a0 = (load >> (bit_shift)) & 1;
+					unsigned char b0 = (load >> (bit_shift + 1)) & 1;
+					unsigned char xor0 = a0 ^ b0;
+					unsigned char xora0 = xor0 & a0;
+					unsigned char xorb0 = xor0 & b0;
+					unsigned char andnotb0 = xorb0 & (!ctemp0); 
+					results[c0] |= andnotb0;
+					temps[c0] = ctemp0 | xora0;
+					
+					
+					unsigned char a1 = (load >> (bit_shift + num_features)) & 1;
+					unsigned char b1 = (load >> (bit_shift + num_features + 1)) & 1;
+					unsigned char xor1 = a1 ^ b1;
+					unsigned char xora1 = xor1 & a1;
+					unsigned char xorb1 = xor1 & b1;
+					unsigned char andnotb1 = xorb1 & (!ctemp1); 
+					results[c0 + 1] |= andnotb1;
+					temps[c0 + 1] = ctemp1 | xora1;
+					
+					unsigned char bit_shift2 = bit_shift + 2 * num_features;
+					unsigned char a2 = (load >> (bit_shift2)) & 1;
+					unsigned char b2 = (load >> (bit_shift2 + 1)) & 1;
+					unsigned char xor2 = a2 ^ b2;
+					unsigned char xora2 = xor2 & a2;
+					unsigned char xorb2 = xor2 & b2;
+					unsigned char andnotb2 = xorb2 & (!ctemp2); 
+					results[c2] |= andnotb2;
+					temps[c2] = ctemp2 | xora2;
+					
+					
+					unsigned char a3 = (load >> (bit_shift2 + num_features)) & 1;
+					unsigned char b3 = (load >> (bit_shift2 + num_features + 1)) & 1;
+					unsigned char xor3 = a3 ^ b3;
+					unsigned char xora3 = xor3 & a3;
+					unsigned char xorb3 = xor3 & b3;
+					unsigned char andnotb3 = xorb3 & (!ctemp3); 
+					results[c2 + 1] |= andnotb3;
+					temps[c2 + 1] = ctemp3 | xora3;
+					
+					
+					bit_shift += 4 * num_features; // i * num_features
+				}
+				cres_idx += samples_per_word; // + samples_per_word * m
+            }
+			j_idx += rows_per_block;	
+	    }
+		data_index_s += 256;
+		res_idx += samples_per_block;
+    }
+	// case of 16 features, unroll FOUR words at once ?
+	} else if(samples_per_word == 4){
+	size_t res_idx = 0; // counts for k loop in samples
+	size_t data_index = 0; // counts k loop in words
+    for(int k = 0; k < num_blocks;k++){
+        for(int j = 0; j < word_size;++j){
+			size_t cres_idx = res_idx; // k * samples_per_block
+			for(int m = 0; m < rows_per_block; m += 2){
+				uint64_t load = d[data_index];
+				uint64_t load2 = d[data_index + 1];
+				
+				size_t c0 = cres_idx;
+				size_t c2 = c0 + 2;
+				size_t c4 = c0 + 4;
+				size_t c6 = c0 + 6;
+				unsigned char ctemp0 = temps[c0];
+				unsigned char ctemp1 = temps[c0 + 1];
+				unsigned char ctemp2 = temps[c2];
+				unsigned char ctemp3 = temps[c2 + 1];
+				unsigned char ctemp4 = temps[c4];
+				unsigned char ctemp5 = temps[c4 + 1];
+				unsigned char ctemp6 = temps[c6];
+				unsigned char ctemp7 = temps[c6 + 1];
+				
+				unsigned char a0 = load & 1;
+				unsigned char b0 = (load >> 1) & 1;
+				unsigned char xor0 = a0 ^ b0;
+				unsigned char xora0 = xor0 & a0;
+				unsigned char xorb0 = xor0 & b0;
+				unsigned char andnotb0 = xorb0 & (!ctemp0); 
+				results[c0] |= andnotb0;
+				temps[c0] = ctemp0 | xora0;
+				
+				
+				unsigned char a1 = (load >> num_features) & 1;
+				unsigned char b1 = (load >> (num_features + 1)) & 1;
+				unsigned char xor1 = a1 ^ b1;
+				unsigned char xora1 = xor1 & a1;
+				unsigned char xorb1 = xor1 & b1;
+				unsigned char andnotb1 = xorb1 & (!ctemp1); 
+				results[c0 + 1] |= andnotb1;
+				temps[c0 + 1] = ctemp1 | xora1;
+				
+				unsigned char nf2 = 2 * num_features;
+				unsigned char a2 = (load >> nf2) & 1;
+				unsigned char b2 = (load >> (nf2 + 1)) & 1;
+				unsigned char xor2 = a2 ^ b2;
+				unsigned char xora2 = xor2 & a2;
+				unsigned char xorb2 = xor2 & b2;
+				unsigned char andnotb2 = xorb2 & (!ctemp2); 
+				results[c2] |= andnotb2;
+				temps[c2] = ctemp2 | xora2;
+				
+				
+				unsigned char a3 = (load >> (nf2 + num_features)) & 1;
+				unsigned char b3 = (load >> (nf2 + 1 + num_features)) & 1;
+				unsigned char xor3 = a3 ^ b3;
+				unsigned char xora3 = xor3 & a3;
+				unsigned char xorb3 = xor3 & b3;
+				unsigned char andnotb3 = xorb3 & (!ctemp3); 
+				results[c2 + 1] |= andnotb3;
+				temps[c2 + 1] = ctemp3 | xora3;
+				
+				
+				//---------
+				
+				
+				unsigned char a4 = load2 & 1;
+				unsigned char b4 = (load2 >> 1) & 1;
+				unsigned char xor4 = a4 ^ b4;
+				unsigned char xora4 = xor4 & a4;
+				unsigned char xorb4 = xor4 & b4;
+				unsigned char andnotb4 = xorb4 & (!ctemp4); 
+				results[c4] |= andnotb4;
+				temps[c4] = ctemp4 | xora4;
+				
+				
+				unsigned char a5 = (load2 >> num_features) & 1;
+				unsigned char b5 = (load2 >> (num_features + 1)) & 1;
+				unsigned char xor5 = a5 ^ b5;
+				unsigned char xora5 = xor5 & a5;
+				unsigned char xorb5 = xor5 & b5;
+				unsigned char andnotb5 = xorb5 & (!ctemp5); 
+				results[c4 + 1] |= andnotb5;
+				temps[c4 + 1] = ctemp5 | xora5;
+				
+				unsigned char a6 = (load2 >> nf2) & 1;
+				unsigned char b6 = (load2 >> (nf2 + 1)) & 1;
+				unsigned char xor6 = a6 ^ b6;
+				unsigned char xora6 = xor6 & a6;
+				unsigned char xorb6 = xor6 & b6;
+				unsigned char andnotb6 = xorb6 & (!ctemp6); 
+				results[c6] |= andnotb6;
+				temps[c6] = ctemp6 | xora6;
+				
+				
+				unsigned char a7 = (load2 >> (nf2 + num_features)) & 1;
+				unsigned char b7 = (load2 >> (nf2 + 1 + num_features)) & 1;
+				unsigned char xor7 = a7 ^ b7;
+				unsigned char xora7 = xor7 & a7;
+				unsigned char xorb7 = xor7 & b7;
+				unsigned char andnotb7 = xorb7 & (!ctemp7); 
+				results[c6 + 1] |= andnotb7;
+				temps[c6 + 1] = ctemp7 | xora7;
+				
+				
+				cres_idx += 8; // + 2 words worth of 4 samples per word
+				data_index += 2;
+            }
+	    }
+		res_idx += samples_per_block;
+    }
+		
+		
+	// goal here: UNROLL for every word of the cacheline so we don't keep load ing results and temps
+	} else if(samples_per_word == 2){
+	size_t res_idx = 0; // counts for k loop in samples
+	size_t data_index = 0; // counts k loop in words
+	for(int k = 0; k < num_blocks;k++){
+		// load all res / temps -> don't need to load initially!
+		unsigned char res0 = 0;
+		unsigned char res1 = 0;
+		unsigned char res2 = 0;
+		unsigned char res3 = 0;
+		unsigned char res4 = 0;
+		unsigned char res5 = 0;
+		unsigned char res6 = 0;
+		unsigned char res7 = 0;
+		unsigned char res01 = 0;
+		unsigned char res11 = 0;
+		unsigned char res21 = 0;
+		unsigned char res31 = 0;
+		unsigned char res41 = 0;
+		unsigned char res51 = 0;
+		unsigned char res61 = 0;
+		unsigned char res71 = 0;
+		
+		
+		unsigned char temp0 = 0;
+		unsigned char temp1 = 0;
+		unsigned char temp2 = 0;
+		unsigned char temp3 = 0;
+		unsigned char temp4 = 0;
+		unsigned char temp5 = 0;
+		unsigned char temp6 = 0;
+		unsigned char temp7 = 0;
+		unsigned char temp01 = 0;
+		unsigned char temp11 = 0;
+		unsigned char temp21 = 0;
+		unsigned char temp31 = 0;
+		unsigned char temp41 = 0;
+		unsigned char temp51 = 0;
+		unsigned char temp61 = 0;
+		unsigned char temp71 = 0;
+		
+		
+        for(int j = 0; j < word_size;++j){
+			uint64_t load0 = d[data_index];
+			uint64_t load1 = d[data_index + 1];
+			uint64_t load2 = d[data_index + 2];
+			uint64_t load3 = d[data_index + 3];
+			uint64_t load4 = d[data_index + 4];
+			uint64_t load5 = d[data_index + 5];
+			uint64_t load6 = d[data_index + 6];
+			uint64_t load7 = d[data_index + 7];
+			
+			unsigned char a0 = load0 & 1;
+			unsigned char b0 = (load0 >> 1) & 1;
+			unsigned char xor0 = a0 ^ b0;
+			unsigned char xora0 = xor0 & a0;
+			unsigned char xorb0 = xor0 & b0;
+			unsigned char andnotb0 = xorb0 & (!temp0); 
+			res0 |= andnotb0;
+			temp0 = temp0 | xora0;
+			
+			unsigned char a01 = (load0 >> num_features) & 1;
+			unsigned char b01 = (load0 >> (num_features + 1)) & 1;
+			unsigned char xor01 = a01 ^ b01;
+			unsigned char xora01 = xor01 & a01;
+			unsigned char xorb01 = xor01 & b01;
+			unsigned char andnotb01 = xorb01 & (!temp01); 
+			res01 |= andnotb01;
+			temp01 = temp01 | xora01;
+			
+			unsigned char a1 = load1 & 1;
+			unsigned char b1 = (load1 >> 1) & 1;
+			unsigned char xor1 = a1 ^ b1;
+			unsigned char xora1 = xor1 & a1;
+			unsigned char xorb1 = xor1 & b1;
+			unsigned char andnotb1 = xorb1 & (!temp1); 
+			res1 |= andnotb1;
+			temp1 = temp1 | xora1;
+			
+			unsigned char a11 = (load1 >> num_features) & 1;
+			unsigned char b11 = (load1 >> (num_features + 1)) & 1;
+			unsigned char xor11 = a11 ^ b11;
+			unsigned char xora11 = xor11 & a11;
+			unsigned char xorb11 = xor11 & b11;
+			unsigned char andnotb11 = xorb11 & (!temp11); 
+			res11 |= andnotb11;
+			temp11 = temp11 | xora11;
+			
+			unsigned char a2 = load2 & 1;
+			unsigned char b2 = (load2 >> 1) & 1;
+			unsigned char xor2 = a2 ^ b2;
+			unsigned char xora2 = xor2 & a2;
+			unsigned char xorb2 = xor2 & b2;
+			unsigned char andnotb2 = xorb2 & (!temp2); 
+			res2 |= andnotb2;
+			temp2 = temp2 | xora2;
+			
+			unsigned char a21 = (load2 >> num_features) & 1;
+			unsigned char b21 = (load2 >> (num_features + 1)) & 1;
+			unsigned char xor21 = a21 ^ b21;
+			unsigned char xora21 = xor21 & a21;
+			unsigned char xorb21 = xor21 & b21;
+			unsigned char andnotb21 = xorb21 & (!temp21); 
+			res21 |= andnotb21;
+			temp21 = temp21 | xora21;
+			
+			unsigned char a3 = load3 & 1;
+			unsigned char b3 = (load3 >> 1) & 1;
+			unsigned char xor3 = a3 ^ b3;
+			unsigned char xora3 = xor3 & a3;
+			unsigned char xorb3 = xor3 & b3;
+			unsigned char andnotb3 = xorb3 & (!temp3); 
+			res3 |= andnotb3;
+			temp3 = temp3 | xora3;
+			
+			unsigned char a31 = (load3 >> num_features) & 1;
+			unsigned char b31 = (load3 >> (num_features + 1)) & 1;
+			unsigned char xor31 = a31 ^ b31;
+			unsigned char xora31 = xor31 & a31;
+			unsigned char xorb31 = xor31 & b31;
+			unsigned char andnotb31 = xorb31 & (!temp31); 
+			res31 |= andnotb31;
+			temp31 = temp31 | xora31;
+			
+			unsigned char a4 = load4 & 1;
+			unsigned char b4 = (load4 >> 1) & 1;
+			unsigned char xor4 = a4 ^ b4;
+			unsigned char xora4 = xor4 & a4;
+			unsigned char xorb4 = xor4 & b4;
+			unsigned char andnotb4 = xorb4 & (!temp4); 
+			res4 |= andnotb4;
+			temp4 = temp4 | xora4;
+			
+			unsigned char a41 = (load4 >> num_features) & 1;
+			unsigned char b41 = (load4 >> (num_features + 1)) & 1;
+			unsigned char xor41 = a41 ^ b41;
+			unsigned char xora41 = xor41 & a41;
+			unsigned char xorb41 = xor41 & b41;
+			unsigned char andnotb41 = xorb41 & (!temp41); 
+			res41 |= andnotb41;
+			temp41 = temp41 | xora41;
+			
+			unsigned char a5 = load5 & 1;
+			unsigned char b5 = (load5 >> 1) & 1;
+			unsigned char xor5 = a5 ^ b5;
+			unsigned char xora5 = xor5 & a5;
+			unsigned char xorb5 = xor5 & b5;
+			unsigned char andnotb5 = xorb5 & (!temp5); 
+			res5 |= andnotb5;
+			temp5 = temp5 | xora5;
+			
+			unsigned char a51 = (load5 >> num_features) & 1;
+			unsigned char b51 = (load5 >> (num_features + 1)) & 1;
+			unsigned char xor51 = a51 ^ b51;
+			unsigned char xora51 = xor51 & a51;
+			unsigned char xorb51 = xor51 & b51;
+			unsigned char andnotb51 = xorb51 & (!temp51); 
+			res51 |= andnotb51;
+			temp51 = temp51 | xora51;
+			
+			unsigned char a6 = load6 & 1;
+			unsigned char b6 = (load6 >> 1) & 1;
+			unsigned char xor6 = a6 ^ b6;
+			unsigned char xora6 = xor6 & a6;
+			unsigned char xorb6 = xor6 & b6;
+			unsigned char andnotb6 = xorb6 & (!temp6); 
+			res6 |= andnotb6;
+			temp6 = temp6 | xora6;
+			
+			unsigned char a61 = (load6 >> num_features) & 1;
+			unsigned char b61 = (load6 >> (num_features + 1)) & 1;
+			unsigned char xor61 = a61 ^ b61;
+			unsigned char xora61 = xor61 & a61;
+			unsigned char xorb61 = xor61 & b61;
+			unsigned char andnotb61 = xorb61 & (!temp61); 
+			res61 |= andnotb61;
+			temp61 = temp61 | xora61;
+			
+			unsigned char a7 = load7 & 1;
+			unsigned char b7 = (load7 >> 1) & 1;
+			unsigned char xor7 = a7 ^ b7;
+			unsigned char xora7 = xor7 & a7;
+			unsigned char xorb7 = xor7 & b7;
+			unsigned char andnotb7 = xorb7 & (!temp7); 
+			res7 |= andnotb7;
+			temp7 = temp7 | xora7;
+			
+			unsigned char a71 = (load7 >> num_features) & 1;
+			unsigned char b71 = (load7 >> (num_features + 1)) & 1;
+			unsigned char xor71 = a71 ^ b71;
+			unsigned char xora71 = xor71 & a71;
+			unsigned char xorb71 = xor71 & b71;
+			unsigned char andnotb71 = xorb71 & (!temp71); 
+			res71 |= andnotb71;
+			temp71 = temp71 | xora71;
+			
+			data_index += 8; //words per cacheline 
+		}
+		
+		results[res_idx] = res0;
+		results[res_idx + 1] = res01;
+		results[res_idx + 2] = res1;
+		results[res_idx + 3] = res11;
+		results[res_idx + 4] = res2;
+		results[res_idx + 5] = res21;
+		results[res_idx + 6] = res3;
+		results[res_idx + 7] = res31;
+		
+		results[res_idx + 8] = res4;
+		results[res_idx + 9] = res41;
+		results[res_idx + 10] = res5;
+		results[res_idx + 11] = res51;
+		results[res_idx + 12] = res6;
+		results[res_idx + 13] = res61;
+		results[res_idx + 14] = res7;
+		results[res_idx + 15] = res71;
+	res_idx += 16; // samples per block
+	
+	}
+	}
+}
+
 
 
 void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
