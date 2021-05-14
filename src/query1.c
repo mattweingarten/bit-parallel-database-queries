@@ -211,6 +211,7 @@ void q1_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 
 // unroll for four samples at once..
 // possibly unroll to keep all temps and results in local variables ?
+// possible speedup using 64 bit loads instead of 32 ?
 void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
 	
 	if(num_features % 4 != 0 || num_features > 32){
@@ -363,10 +364,237 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
     }
 		
 		
-		
+	// goal here: UNROLL for every word of the cacheline so we don't keep load ing results and temps
 	} else if(samples_per_word == 1){
 		//TODO
+	size_t res_idx = 0; // counts for k loop in samples
+	size_t data_index = 0; // counts k loop in words
+	for(int k = 0; k < num_blocks;k++){
+		// load all res / temps -> don't need to load initially!
+		uint32_t res0 = 0;
+		uint32_t res1 = 0;
+		uint32_t res2 = 0;
+		uint32_t res3 = 0;
+		uint32_t res4 = 0;
+		uint32_t res5 = 0;
+		uint32_t res6 = 0;
+		uint32_t res7 = 0;
 		
+		uint32_t res8 = 0;
+		uint32_t res9 = 0;
+		uint32_t res10 = 0;
+		uint32_t res11 = 0;
+		uint32_t res12 = 0;
+		uint32_t res13 = 0;
+		uint32_t res14 = 0;
+		uint32_t res15 = 0;
+		
+		uint32_t temp0 = 0;
+		uint32_t temp1 = 0;
+		uint32_t temp2 = 0;
+		uint32_t temp3 = 0;
+		uint32_t temp4 = 0;
+		uint32_t temp5 = 0;
+		uint32_t temp6 = 0;
+		uint32_t temp7 = 0;
+		
+		uint32_t temp8 = 0;
+		uint32_t temp9 = 0;
+		uint32_t temp10 = 0;
+		uint32_t temp11 = 0;
+		uint32_t temp12 = 0;
+		uint32_t temp13 = 0;
+		uint32_t temp14 = 0;
+		uint32_t temp15 = 0;
+		
+		
+        for(int j = 0; j < word_size;++j){
+			uint32_t load0 = data[data_index];
+			uint32_t load1 = data[data_index + 1];
+			uint32_t load2 = data[data_index + 2];
+			uint32_t load3 = data[data_index + 3];
+			uint32_t load4 = data[data_index + 4];
+			uint32_t load5 = data[data_index + 5];
+			uint32_t load6 = data[data_index + 6];
+			uint32_t load7 = data[data_index + 7];
+			
+			uint32_t load8 = data[data_index + 8];
+			uint32_t load9 = data[data_index + 9];
+			uint32_t load10 = data[data_index + 10];
+			uint32_t load11 = data[data_index + 11];
+			uint32_t load12 = data[data_index + 12];
+			uint32_t load13 = data[data_index + 13];
+			uint32_t load14 = data[data_index + 14];
+			uint32_t load15 = data[data_index + 15];
+			
+			uint32_t a0 = load0 & 1;
+			uint32_t b0 = (load0 >> 1) & 1;
+			uint32_t xor0 = a0 ^ b0;
+			uint32_t xora0 = xor0 & a0;
+			uint32_t xorb0 = xor0 & b0;
+			uint32_t andnotb0 = xorb0 & (!temp0); 
+			res0 |= andnotb0;
+			temp0 = temp0 | xora0;
+			
+			uint32_t a1 = load1 & 1;
+			uint32_t b1 = (load1 >> 1) & 1;
+			uint32_t xor1 = a1 ^ b1;
+			uint32_t xora1 = xor1 & a1;
+			uint32_t xorb1 = xor1 & b1;
+			uint32_t andnotb1 = xorb1 & (!temp1); 
+			res1 |= andnotb1;
+			temp1 = temp1 | xora1;
+			
+			uint32_t a2 = load2 & 1;
+			uint32_t b2 = (load2 >> 1) & 1;
+			uint32_t xor2 = a2 ^ b2;
+			uint32_t xora2 = xor2 & a2;
+			uint32_t xorb2 = xor2 & b2;
+			uint32_t andnotb2 = xorb2 & (!temp2); 
+			res2 |= andnotb2;
+			temp2 = temp2 | xora2;
+			
+			uint32_t a3 = load3 & 1;
+			uint32_t b3 = (load3 >> 1) & 1;
+			uint32_t xor3 = a3 ^ b3;
+			uint32_t xora3 = xor3 & a3;
+			uint32_t xorb3 = xor3 & b3;
+			uint32_t andnotb3 = xorb3 & (!temp3); 
+			res3 |= andnotb3;
+			temp3 = temp3 | xora3;
+			
+			uint32_t a4 = load4 & 1;
+			uint32_t b4 = (load4 >> 1) & 1;
+			uint32_t xor4 = a4 ^ b4;
+			uint32_t xora4 = xor4 & a4;
+			uint32_t xorb4 = xor4 & b4;
+			uint32_t andnotb4 = xorb4 & (!temp4); 
+			res4 |= andnotb4;
+			temp4 = temp4 | xora4;
+			
+			uint32_t a5 = load5 & 1;
+			uint32_t b5 = (load5 >> 1) & 1;
+			uint32_t xor5 = a5 ^ b5;
+			uint32_t xora5 = xor5 & a5;
+			uint32_t xorb5 = xor5 & b5;
+			uint32_t andnotb5 = xorb5 & (!temp5); 
+			res5 |= andnotb5;
+			temp5 = temp5 | xora5;
+			
+			uint32_t a6 = load6 & 1;
+			uint32_t b6 = (load6 >> 1) & 1;
+			uint32_t xor6 = a6 ^ b6;
+			uint32_t xora6 = xor6 & a6;
+			uint32_t xorb6 = xor6 & b6;
+			uint32_t andnotb6 = xorb6 & (!temp6); 
+			res6 |= andnotb6;
+			temp6 = temp6 | xora6;
+			
+			uint32_t a7 = load7 & 1;
+			uint32_t b7 = (load7 >> 1) & 1;
+			uint32_t xor7 = a7 ^ b7;
+			uint32_t xora7 = xor7 & a7;
+			uint32_t xorb7 = xor7 & b7;
+			uint32_t andnotb7 = xorb7 & (!temp7); 
+			res7 |= andnotb7;
+			temp7 = temp7 | xora7;
+			
+			
+			uint32_t a8 = load8 & 1;
+			uint32_t b8 = (load8 >> 1) & 1;
+			uint32_t xor8 = a8 ^ b8;
+			uint32_t xora8 = xor8 & a8;
+			uint32_t xorb8 = xor8 & b8;
+			uint32_t andnotb8 = xorb8 & (!temp8); 
+			res8 |= andnotb8;
+			temp8 = temp8 | xora8;
+			
+			uint32_t a9 = load9 & 1;
+			uint32_t b9 = (load9 >> 1) & 1;
+			uint32_t xor9 = a9 ^ b9;
+			uint32_t xora9 = xor9 & a9;
+			uint32_t xorb9 = xor9 & b9;
+			uint32_t andnotb9 = xorb9 & (!temp9); 
+			res9 |= andnotb9;
+			temp9 = temp9 | xora9;
+			
+			uint32_t a10 = load10 & 1;
+			uint32_t b10 = (load10 >> 1) & 1;
+			uint32_t xor10 = a10 ^ b10;
+			uint32_t xora10 = xor10 & a10;
+			uint32_t xorb10 = xor10 & b10;
+			uint32_t andnotb10 = xorb10 & (!temp10); 
+			res10 |= andnotb10;
+			temp10 = temp10 | xora10;
+			
+			uint32_t a11 = load11 & 1;
+			uint32_t b11 = (load11 >> 1) & 1;
+			uint32_t xor11 = a11 ^ b11;
+			uint32_t xora11 = xor11 & a11;
+			uint32_t xorb11 = xor11 & b11;
+			uint32_t andnotb11 = xorb11 & (!temp11); 
+			res11 |= andnotb11;
+			temp11 = temp11 | xora11;
+			
+			uint32_t a12 = load12 & 1;
+			uint32_t b12 = (load12 >> 1) & 1;
+			uint32_t xor12 = a12 ^ b12;
+			uint32_t xora12 = xor12 & a12;
+			uint32_t xorb12 = xor12 & b12;
+			uint32_t andnotb12 = xorb12 & (!temp12); 
+			res12 |= andnotb12;
+			temp12 = temp12 | xora12;
+			
+			uint32_t a13 = load13 & 1;
+			uint32_t b13 = (load13 >> 1) & 1;
+			uint32_t xor13 = a13 ^ b13;
+			uint32_t xora13 = xor13 & a13;
+			uint32_t xorb13 = xor13 & b13;
+			uint32_t andnotb13 = xorb13 & (!temp13); 
+			res13 |= andnotb13;
+			temp13 = temp13 | xora13;
+			
+			uint32_t a14 = load14 & 1;
+			uint32_t b14 = (load14 >> 1) & 1;
+			uint32_t xor14 = a14 ^ b14;
+			uint32_t xora14 = xor14 & a14;
+			uint32_t xorb14 = xor14 & b14;
+			uint32_t andnotb14 = xorb14 & (!temp14); 
+			res14 |= andnotb14;
+			temp14 = temp14 | xora14;
+			
+			uint32_t a15 = load15 & 1;
+			uint32_t b15 = (load15 >> 1) & 1;
+			uint32_t xor15 = a15 ^ b15;
+			uint32_t xora15 = xor15 & a15;
+			uint32_t xorb15 = xor15 & b15;
+			uint32_t andnotb15 = xorb15 & (!temp15); 
+			res15 |= andnotb15;
+			temp15 = temp15 | xora15;
+			
+			data_index += 16; //words per cacheline 
+		}
+		
+		results[res_idx] = res0;
+		results[res_idx + 1] = res1;
+		results[res_idx + 2] = res2;
+		results[res_idx + 3] = res3;
+		results[res_idx + 4] = res4;
+		results[res_idx + 5] = res5;
+		results[res_idx + 6] = res6;
+		results[res_idx + 7] = res7;
+		
+		results[res_idx + 8] = res8;
+		results[res_idx + 9] = res9;
+		results[res_idx + 10] = res10;
+		results[res_idx + 11] = res11;
+		results[res_idx + 12] = res12;
+		results[res_idx + 13] = res13;
+		results[res_idx + 14] = res14;
+		results[res_idx + 15] = res15;
+	res_idx += 16; // samples per block
+	
+	}
 	}
 }
 
