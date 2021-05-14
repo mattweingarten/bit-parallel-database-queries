@@ -598,6 +598,17 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 	}
 }
 
+// POSSIBLE NEXT OPTIMIZATION: CHANGE DATA TYPES!
+/*
+res can be either a bitvector or at least a vector of chars
+
+temp also only needs to be a char array (only need one bit!)
+
+use 64 bit words so we load less for each unrolled version
+
+then can optimize parallel & vector
+*/
+
 
 void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
 	
