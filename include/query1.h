@@ -24,6 +24,8 @@ void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 
 void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries);
 
+void q1_parallel_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries);
+
 void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries);
 
 #endif

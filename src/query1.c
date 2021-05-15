@@ -1127,6 +1127,157 @@ can't do any blocking work, given the way the data is layed out
 at best can try and keep RES/TMP in L1 cache for the non-parallel implementations
 */
 
+void q1_parallel_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+	
+	
+	int samples_per_block = 64 / num_features;
+	int samples_per_cl = samples_per_block * 8;
+   	int num_cl = ceil(((float)num_samples) / samples_per_cl);
+
+	//printf("spb: %i, spcl: %i, num_cl: %i, ne: %i \n\n", samples_per_block, samples_per_cl, num_cl, number_entries);
+	// write results to memory after every cacheline block 
+	uint64_t temp[8] = {0}; //start as all 0's
+	uint64_t res[8] = {0};
+	uint64_t a[8] = {0};
+	uint64_t b[8] = {0};
+	uint64_t xor[8] = {0};
+	
+	// use 64bit pointer (do we need to cast?)
+	uint64_t * d = data;
+	
+	/* i is the cacheline block index
+	   j is the bit index (i.e. first to 32nd bit of each value)
+	   k is the block index (we compute blocks at a time!)
+	   
+	   need to store a res and a temp for each block
+	*/
+	int res_idx = 0;
+	int load_idx = 0;
+	for(int i = 0; i < num_cl; i++){
+		
+		for(int j = 0; j < 32; j++){ // 32 == num_bits (should be a constant?)
+			
+			a[0] = d[load_idx];
+			a[1] = d[load_idx + 1];
+			a[2] = d[load_idx + 2];
+			a[3] = d[load_idx + 3];
+			
+			b[0] = a[0] >> 1;
+			xor[0] = a[0] ^ b[0];
+			res[0] |= (xor[0] & b[0]) & (~temp[0]);
+			temp[0] |= xor[0] & a[0];
+			
+			
+			b[1] = a[1] >> 1;
+			xor[1] = a[1] ^ b[1];
+			res[1] |= (xor[1] & b[1]) & (~temp[1]);
+			temp[1] |= xor[1] & a[1];
+			
+			
+			b[2] = a[2] >> 1;
+			xor[2] = a[2] ^ b[2];
+			res[2] |= (xor[2] & b[2]) & (~temp[2]);
+			temp[2] |= xor[2] & a[2];
+			
+			
+			b[3] = a[3] >> 1;
+			xor[3] = a[3] ^ b[3];
+			res[3] |= (xor[3] & b[3]) & (~temp[3]);
+			temp[3] |= xor[3] & a[3];
+			
+			a[4] = d[load_idx + 4];
+			a[5] = d[load_idx + 5];
+			a[6] = d[load_idx + 6];
+			a[7] = d[load_idx + 7];
+			
+			b[4] = a[4] >> 1;
+			xor[4] = a[4] ^ b[4];
+			res[4] |= (xor[4] & b[4]) & (~temp[4]);
+			temp[4] |= xor[4] & a[4];
+			
+			
+			b[5] = a[5] >> 1;
+			xor[5] = a[5] ^ b[5];
+			res[5] |= (xor[5] & b[5]) & (~temp[5]);
+			temp[5] |= xor[5] & a[5];
+			
+			
+			b[6] = a[6] >> 1;
+			xor[6] = a[6] ^ b[6];
+			res[6] |= (xor[6] & b[6]) & (~temp[6]);
+			temp[6] |= xor[6] & a[6];
+			
+			
+
+			b[7] = a[7] >> 1;
+			xor[7] = a[7] ^ b[7];
+			res[7] |= (xor[7] & b[7]) & (~temp[7]);
+			temp[7] |= xor[7] & a[7];
+			
+			
+			load_idx += 8;
+		}
+		
+		
+		uint64_t cres_idx = res_idx;
+		
+		
+		// want to keep first results in cache while handling last.. need some testing
+		// if only 4 features per sample -> type of results array will have a large impact
+		// maybe only do first 4 words to completion -> then next 4 words
+		
+		for(int m = 0; m < samples_per_block; m++){
+			
+			results[cres_idx] = res[0] & 1;
+			res[0] = res[0] >> num_features;
+
+			results[cres_idx + samples_per_block] = res[1] & 1;
+			res[1] = res[1] >> num_features;
+
+			results[cres_idx + samples_per_block * 2] = res[2] & 1;
+			res[2] = res[2] >> num_features;
+
+			results[cres_idx + samples_per_block * 3] = res[3] & 1;
+			res[3] = res[3] >> num_features;
+
+			results[cres_idx + samples_per_block * 4] = res[4] & 1;
+			res[4] = res[4] >> num_features;
+
+			results[cres_idx + samples_per_block * 5] = res[5] & 1;
+			res[5] = res[5] >> num_features;
+
+			results[cres_idx + samples_per_block * 6] = res[6] & 1;
+			res[6] = res[6] >> num_features;
+
+			results[cres_idx + samples_per_block * 7] = res[7] & 1;
+			res[7] = res[7] >> num_features;
+			
+			cres_idx++;
+		}
+		
+		res_idx += 8 * samples_per_block;
+			
+		temp[0] = 0; // reset temp and res
+		res[0] = 0;
+		temp[1] = 0;
+		res[1] = 0;
+		temp[2] = 0;
+		res[2] = 0;
+		temp[3] = 0;
+		res[3] = 0;
+		temp[4] = 0;
+		res[4] = 0;
+		temp[5] = 0;
+		res[5] = 0;
+		temp[6] = 0;
+		res[6] = 0;
+		temp[7] = 0;
+		res[7] = 0;
+		
+	}
+}
+
+
 // seems to work now, could use some cleaning up.. validation crashes but single test seems good?
 
 /* must be corrupting memory somewhere, things i have tested:
