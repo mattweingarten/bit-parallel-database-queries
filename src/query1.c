@@ -1112,6 +1112,21 @@ void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int wo
 	}
 }
 
+/*
+possible optimizations:
+loop unrolling (unroll k loop at least)
+scalar replacement -> combine the two k loops, only store res once
+   ^-> also temp scalar replacement
+make res a bitvector ?
+
+
+EARLY PRUNING OPTIMIZATION ! (also for the earlier ones!)
+for unrolled ones, can keep a counter (how many are decided, i.e. res == 1? see if an if statement test on counter is not worth possible early pruning (probably depends on the scale of the values)
+
+can't do any blocking work, given the way the data is layed out
+at best can try and keep RES/TMP in L1 cache for the non-parallel implementations
+*/
+
 // seems to work now, could use some cleaning up.. validation crashes but single test seems good?
 
 /* must be corrupting memory somewhere, things i have tested:
@@ -1143,6 +1158,34 @@ i loop:
 NOTE:
 SHOULD MAKE THE READ OUT INTO RESULTS MORE MODULAR TO AVOID WRITING BEYOND THE ARRAY IF THERE ARENT enough samples to fill out all of the blocks in every cacheline block.
 either that, or pad the results array to align with the numper of samples per cacheline block
+
+
+
+
+possible optimizations:
+aligned loop?
+unroll for j? (worth a try see if it speeds it up)
+maybe make the read out more specific (i.e. no "for" statement if only one sample per block)
+also then can unroll the read out somewhat accordingly perhaps
+check if there are alternatives to memcpy which might be faster?
+is setzero 1 cycle?
+simplify the index operations (remove multiplier?) -> can do one scalar replace since it is reused
+
+maybe to read results, can use upper / lower loads and do it in parallel too ??
+maybe there is a mask load so i only load specific bits? (could then just run through those?)
+if that is the case -> make results a bit string ! just keep loading howevermany samples per word using mask load? (maybe this doesn't exist but it's an idea)
+
+check if memory bound somehow? try to compute ops, find bandwidth etc
+
+if there is only one sample per word, could non vector be faster?
+
+
+POSSIBLE INTERESTING EXTENSION: make it more than 64 features per sample.. compare one feature from the first block with one feature from the second block (i.e. CL block)
+
+but then really you would just have to load both blocks, not much different.. can't really block out the memory use any better
+
+at best some register optimization perhaps ? try to limit to 16 registers we reuse? sort of bolck it out that way?
+
 */
 void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
 
