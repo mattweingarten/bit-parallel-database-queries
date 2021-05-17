@@ -1,0 +1,37 @@
+INTEL HASWELL CACHING DATA:
+
+    CACHES:
+        L1I Cache:
+            32 KB 8-way set associative
+            64 B line size
+            Write-back policy
+            shared by the two threads, per core
+
+
+
+        L1D Cache:
+            32 KB 8-way set associative
+            64 B line size
+            shared by the two threads, per core
+            4 cycles for fastest load-to-use
+            64 Bytes/cycle load bandwidth
+            32 Bytes/cycle store bandwidth
+            Write-back policy
+
+        L2 Cache:
+
+            unified, 256 KB 8-way set associative
+            11 cycles for fastest load-to-use
+            64B/cycle bandwidth to L1$
+
+        L3 Cache:
+            1.5 - 3 MB
+            Write-back policy
+
+
+        L4 Cache:
+            128 MB
+
+    TLB 
+        4KB page translations:
+        128 entries; 4-way set associative

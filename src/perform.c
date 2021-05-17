@@ -224,6 +224,64 @@ double perf_test_q3(q3_t q,generator R_gen,generator S_gen,size_t R_rows,size_t 
 
 
 
+double perf_test_q3_blocked(q3b_t q,generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols,size_t block_size){
+
+	int64_t start,end;
+	double cycles = 0.;
+	uint32_t* R = generateDB(R_rows,R_cols,R_gen);
+	uint32_t* S = generateDB(S_rows,S_cols,S_gen);
+	uint32_t * R_weave = weave_samples_wrapper(R,R_rows,R_cols);
+	uint32_t * S_weave = weave_samples_wrapper(S,S_rows,S_cols);
+	uint32_t gt_out_size = cart_prod(R_rows,S_rows);
+	uint32_t* gt = (uint32_t*) aligned_alloc( 32, gt_out_size * 2 * sizeof(uint32_t));
+	q3_index(R,S,gt,&gt_out_size,R_rows,R_cols,S_rows,S_cols);
+	uint32_t* re_gt = realloc(gt,gt_out_size * 2 *  sizeof(uint32_t));
+
+	free(R);
+	free(S);
+	
+	uint32_t res_out_size = cart_prod(R_rows,S_rows);
+	uint32_t* res = (uint32_t*) aligned_alloc( 32, res_out_size * 2 * sizeof(uint32_t));
+	q(R_weave,S_weave,res,&res_out_size,R_rows,R_cols,S_rows,S_cols,32,16,block_size);
+	uint32_t* re_res = realloc(res,res_out_size * 2 *  sizeof(uint32_t));
+	
+	// Warmup
+	start = start_tsc();
+	for(size_t i = 0; i < N_WARMUP || end * i < 1e8; ++i){
+		q(R_weave,S_weave,re_res,&res_out_size,R_rows,R_cols,S_rows,S_cols,32,16,block_size);
+		end = stop_tsc(start);
+	}
+
+
+	//calculation
+
+	start = start_tsc();
+	for(size_t i = 0; i < N_PERF_ITERATION; ++i){
+		// printf("Calulating %d\n",i);
+		q(R_weave,S_weave,re_res,&res_out_size,R_rows,R_cols,S_rows,S_cols,32,16,block_size);
+	}
+
+
+	
+	end = stop_tsc(start);
+
+
+	bool correct = compare_join(re_gt,re_res,gt_out_size,res_out_size);
+	if(!correct){
+		printf("Failed a test!\n");
+	}
+
+	free(R_weave);
+	free(S_weave);
+	free(re_res);
+	free(re_gt);
+	
+	return ((double)end) / N_PERF_ITERATION;
+}
+
+
+
+
 void perf_q3_R_rows(char* filename, q3_t q,generator gen,size_t R_row_max, size_t step_size,size_t R_cols,size_t S_rows, size_t S_cols){
 	for(size_t i = step_size; i <= R_row_max;i += step_size){
 		double cycles = perf_test_q3(q,gen,gen,i,R_cols,S_rows,S_cols);
@@ -234,7 +292,19 @@ void perf_q3_R_rows(char* filename, q3_t q,generator gen,size_t R_row_max, size_
 
 
 
+void perf_q3_compare_block(char * filename, q3b_t q,size_t max_row_size){
+	for(size_t i = 1024; i <= max_row_size; i *= 2){
+		size_t max_block = (i * 4) /512;
+		for(size_t block_size = 1; block_size < max_block;++block_size){
+			if(max_block % block_size == 0){
 
+				double cycles = perf_test_q3_blocked(q,rand_gen,rand_100_gen,i,4,i,4,block_size);
+				saveCycledataToFile_q3_block_cmp(filename,cycles,i,i,block_size);
+				printf("Cycles for rows= %d blocks= %d => %lf\n",i,block_size,cycles);
+			}
+		}
+	}
+}
 
 void saveCycledataToFile_q3( char* filename,double cycles, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols){
 
@@ -251,6 +321,20 @@ void saveCycledataToFile_q3( char* filename,double cycles, size_t R_rows, size_t
    fclose(fptr);
 }
 
+void saveCycledataToFile_q3_block_cmp( char* filename,size_t cycles, size_t R_rows, size_t S_rows,size_t block_size){
+
+   char buf[1024];
+   strcpy(buf, Q3_PATH );
+   strcat(buf,filename);
+   FILE *fptr;
+   fptr = fopen(buf,"a");
+   if(fptr == NULL)
+   {
+      printf("ERROR: cannot write to file!\n");   
+   }
+   fprintf(fptr,"%d, %d, %d, %d\n",cycles,R_rows,S_rows,block_size);
+   fclose(fptr);
+}
 
 void saveCycledataToFile( char* filename,size_t cycles, size_t rows, size_t cols, size_t gen){
 

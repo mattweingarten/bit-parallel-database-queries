@@ -33,4 +33,7 @@ bool test_q3(q3_t, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, 
 bool compare(uint32_t * x, uint32_t *y,size_t n);
 bool compare_rows_cols(uint32_t * x, uint32_t *y,size_t rows,size_t cols);
 bool compare_join(uint32_t * x, uint32_t *y,size_t x_rows,size_t y_rows);
+
+bool test_q3_block(q3b_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols,size_t block_size);
+
 #endif 

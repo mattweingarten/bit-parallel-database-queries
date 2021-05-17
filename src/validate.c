@@ -68,8 +68,9 @@
 void validate_query(void* query, enum Query type){
 
     generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
-    size_t row_sizes[5] = {128,256,512,2048,32768};
+    size_t row_sizes[5] = {128,256,512,2048,4096};
     size_t cols_sizes[4] = {4,8,16,32};
+    // TODO: DB with 64 columns break
     bool correct;
     size_t count_correct = 0;
     size_t count = 0;
@@ -106,16 +107,7 @@ void validate_query(void* query, enum Query type){
                     count++;
                     break;
                 case Q3:
-
-                    // for(size_t l = 0; l < 5;l++){
-                    //     for(size_t m = 0; m < 5;m++){
-                    //         for(size_t o = 0 ; o < 4;o++){
-                    //             
-
-                    //         }
-                    //     }
-                    // }
-                    correct = test_q3((q3_t)query,&rand_gen,&mod_gen,row_sizes[j],cols_sizes[k],row_sizes[j % 3 + 1],cols_sizes[k % 2 + 1]);
+                    correct = test_q3((q3_t)query,&rand_gen,&mod_gen,row_sizes[j],cols_sizes[k],row_sizes[j % 2 + 3],cols_sizes[k % 2 + 1]);
                     if(correct){
                         count_correct++;
                         printf(GRN "PASSED" RESET);
@@ -124,6 +116,23 @@ void validate_query(void* query, enum Query type){
                     }
                     count++;
                     printf(" Test for q%d  with R_rows = %d, R_cols = %d, R_gen = randgen, S_rows = %d, S_cols = %d,S_gen=mod_gen\n",type  + 1,row_sizes[j],cols_sizes[k],row_sizes[j % 3 + 1],cols_sizes[k % 2 + 1]);
+                    break;
+                
+
+
+                case Q3b:
+                    //TODO: make this smarter here
+                    // for(size_t b_size = 1; b_size < )
+                    correct = test_q3_block((q3b_t) query,&rand_gen,&mod_gen,row_sizes[j  % 2 + 3],cols_sizes[k],row_sizes[j % 3 + 1],cols_sizes[k % 2 + 1],4);
+                    if(correct){
+                        count_correct++;
+                        printf(GRN "PASSED" RESET);
+                    }else{
+                        printf(RED "FAILED" RESET);
+                    }
+
+                    count++;
+                    printf(" Test for q%d  with R_rows = %d, R_cols = %d, R_gen = randgen, S_rows = %d, S_cols = %d,S_gen=mod_gen,block_size  = %d\n",type  + 1,row_sizes[j  % 2 + 3],cols_sizes[k],row_sizes[j % 3 + 1],cols_sizes[k % 2 + 1],4);
                     break;
                 default:
                     printf("Invalid query type!\n");
@@ -228,6 +237,61 @@ bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols
     return correct;
 }
 
+
+
+
+bool test_q3_block(q3b_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols,size_t block_size){
+    bool correct = true;
+    for(size_t i = 0; i < N_RUNS;++i){
+        uint32_t* R = generateDB(R_rows,R_cols,R_gen);
+        uint32_t* S = generateDB(S_rows,S_cols,S_gen);
+
+        // PRINT_aligned_alloc( 32, S,S_rows,S_cols);
+        // HLINE;
+
+        // PRINT_MALLOC(R,R_rows,R_cols);
+        // PRINT_MALLOC(S,S_rows,S_cols);
+        // PRINT_aligned_alloc( 32, R,R_rows,R_cols);
+        // HLINE;
+
+        uint32_t * R_weave = weave_samples_wrapper(R,R_rows,R_cols);
+        uint32_t * S_weave = weave_samples_wrapper(S,S_rows,S_cols);
+        // PRINT_WEAVED(R_weave,256,4);
+        // HLINE;
+        // PRINT_aligned_alloc( 32, R,R_rows,R_cols);
+        uint32_t gt_out_size = cart_prod(R_rows,S_rows);
+        uint32_t* gt = (uint32_t*) aligned_alloc( 32, gt_out_size * 2 * sizeof(uint32_t));
+
+        q3_index(R,S,gt,&gt_out_size,R_rows,R_cols,S_rows,S_cols);
+
+        uint32_t* re_gt = realloc(gt,gt_out_size * 2 *  sizeof(uint32_t));
+        
+        free(R);
+        free(S);
+
+        
+
+
+        
+
+        uint32_t comp_out_size = cart_prod(R_rows,S_rows);
+        uint32_t* comp = (uint32_t*) aligned_alloc( 32, comp_out_size * 2 * sizeof(uint32_t));
+
+        q(R_weave,S_weave,comp,&comp_out_size,R_rows,R_cols,S_rows,S_cols,32,16,block_size);
+
+        uint32_t* re_comp = realloc(comp,comp_out_size * 2 *  sizeof(uint32_t));
+
+        correct = compare_join(re_gt,re_comp,gt_out_size,comp_out_size);
+        
+    
+
+        free(R_weave);
+        free(S_weave);
+        free(re_comp);
+        free(re_gt);
+    }
+    return correct;
+}
 
 
 
