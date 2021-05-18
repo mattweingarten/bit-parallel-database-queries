@@ -2,6 +2,7 @@
 #include <assert.h>
 #include <stdint.h> 
 #include "../include/unit_tests.h"
+#include <immintrin.h>
 
 uint32_t lt(uint32_t x, uint32_t y){
 	uint32_t res = 0;
@@ -26,3 +27,8 @@ void test_lt(void){
 }
 
 
+
+
+// void test_integer_vector_division(){
+	
+// }

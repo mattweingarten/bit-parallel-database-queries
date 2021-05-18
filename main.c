@@ -23,15 +23,16 @@ int main(int argc, char **argv) {
 
 
 
-
-
-	// validate_query(q3_weave_index_l2_block,Q3b);
-
+	// test_q3(&q3_unroll,mod_gen,mod_gen,128,4,128,4);
+	test_q3(&q3_unroll_v2,mod_gen,mod_gen,128,4,128,4);
+	test_q3(&q3_vector,mod_gen,mod_gen,128,4,128,4);
+	// validate_query(&q3_unroll_v2,Q3);
+	// validate_query(&q3_weave_index_l2_block,Q3b);
 	// perf_q3_compare_block("q3_blocking_measurements",&q3_weave_index_l2_block,16384);
 
 
-	perf_q3_R_rows("q3_weave_index_l1_block",&q3_weave_index_l1_block,&rand_gen,32768,1024 ,2,1024,4);
-	perf_q3_R_rows("q3_weave_index",&q3_weave_index,&rand_gen,32768,1024 ,2,1024,4);
+	// perf_q3_R_rows("q3_weave_index_l1_block",&q3_weave_index_l1_block,&rand_gen,32768,1024 ,2,1024,4);
+	// perf_q3_R_rows("q3_weave_index",&q3_weave_index,&rand_gen,32768,1024 ,2,1024,4);
 
 	
 	return 0;

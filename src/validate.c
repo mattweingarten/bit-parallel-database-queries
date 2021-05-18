@@ -69,7 +69,7 @@ void validate_query(void* query, enum Query type){
 
     generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
     size_t row_sizes[5] = {128,256,512,2048,4096};
-    size_t cols_sizes[4] = {4,8,16,32};
+    size_t cols_sizes[4] = {2,8,16,32};
     // TODO: DB with 64 columns break
     bool correct;
     size_t count_correct = 0;
@@ -107,7 +107,7 @@ void validate_query(void* query, enum Query type){
                     count++;
                     break;
                 case Q3:
-                    correct = test_q3((q3_t)query,&rand_gen,&mod_gen,row_sizes[j],cols_sizes[k],row_sizes[j % 2 + 3],cols_sizes[k % 2 + 1]);
+                    correct = test_q3((q3_t)query,&rand_gen,&rand_100_gen,row_sizes[j  % 2 + 3],cols_sizes[k],row_sizes[j % 3 + 1],cols_sizes[k % 2 + 1]);
                     if(correct){
                         count_correct++;
                         printf(GRN "PASSED" RESET);
@@ -190,12 +190,12 @@ bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols
         uint32_t* R = generateDB(R_rows,R_cols,R_gen);
         uint32_t* S = generateDB(S_rows,S_cols,S_gen);
 
-        // PRINT_aligned_alloc( 32, S,S_rows,S_cols);
+        // PRINT_MALLOC( 32, S,S_rows,S_cols);
         // HLINE;
 
         // PRINT_MALLOC(R,R_rows,R_cols);
-        // PRINT_MALLOC(S,S_rows,S_cols);
-        // PRINT_aligned_alloc( 32, R,R_rows,R_cols);
+        PRINT_MALLOC(S,S_rows,S_cols);
+        // // PRINT_aligned_alloc( 32, R,R_rows,R_cols);
         // HLINE;
 
         uint32_t * R_weave = weave_samples_wrapper(R,R_rows,R_cols);
@@ -226,7 +226,7 @@ bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols
         uint32_t* re_comp = realloc(comp,comp_out_size * 2 *  sizeof(uint32_t));
 
         correct = compare_join(re_gt,re_comp,gt_out_size,comp_out_size);
-        
+        printf("Outsize: %d  -> ",gt_out_size);
     
 
         free(R_weave);

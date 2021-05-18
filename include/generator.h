@@ -22,4 +22,5 @@ uint32_t one_zero_gen(size_t i, size_t j);
 uint32_t two_zero_gen(size_t i, size_t j);
 uint32_t cartesian_product_size(int R_rows, int R_cols, int S_rows, int S_cols);
 uint32_t cart_prod(size_t R_rows, size_t S_rows);
+uint32_t rand_10_gen(size_t i, size_t j );
 #endif 

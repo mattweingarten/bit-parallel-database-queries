@@ -1,6 +1,7 @@
 #include <stdint.h>
 
 #include "../include/debug.h"
+#include <immintrin.h>
 void PRINT_MALLOC(uint32_t* ptr, size_t rows, size_t cols){
     for(int i = 0; i < rows;++i){
 		for(int j = 0; j < cols;++j){
@@ -53,4 +54,12 @@ void PRINT_WEAVED(uint32_t* ptr,size_t rows, size_t cols){
 		}
 		HLINE;
 	}
+}
+
+
+
+void PRINT_32_BIT_VECTOR(__m256i v){
+	uint32_t vector[8];
+    memcpy(vector, &v, sizeof(vector));
+    printf("%u,%u,%u,%u,%u,%u,%u,%u\n",vector[0],vector[1],vector[2],vector[3],vector[4],vector[5],vector[6],vector[7]);
 }

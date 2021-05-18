@@ -2,6 +2,7 @@
 #define DEBUG_H_
 
 #include <stdio.h>
+#include <immintrin.h>
 
 
 #define RED   "\x1B[31m"
@@ -61,4 +62,9 @@ void PRINT_MALLOC_B(uint32_t *ptr,size_t rows,size_t cols);
 
 void PRINT_WEAVED(uint32_t* ptr,size_t rows, size_t cols);
 void PRINT_MALLOC_H(uint32_t* ptr,size_t n);
+void PRINT_32_BIT_VECTOR(__m256i v);
+// #define PRINT_32_BIT_VECTOR(v) \
+//     uint32_t vector[8];\
+//     memcpy(v, &vector, sizeof(v));\
+//     printf("%u,%u,%u,%u,%u,%u,%u,%u\n",vector[7],vector[6],vector[5],vector[4],vector[3],vector[2],vector[1],vector[0]);
 #endif

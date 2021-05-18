@@ -20,6 +20,11 @@ uint32_t rand_100_gen(size_t i, size_t j ){
         // srand((unsigned) time(&t));
     	return ((uint32_t) rand() %100);
 }
+uint32_t rand_10_gen(size_t i, size_t j ){
+        // time_t t;
+        // srand((unsigned) time(&t));
+    	return ((uint32_t) rand() %10);
+}
 
 
 uint32_t asc_gen(size_t i, size_t j){
