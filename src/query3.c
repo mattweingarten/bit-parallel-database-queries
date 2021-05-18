@@ -681,8 +681,8 @@ void q3_vector(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, s
 
 
 		}
-		// HLINE;
-		// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
+		HLINE;
+		PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
 		// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
 
 		__m256i S_b_vector;
@@ -726,15 +726,20 @@ void q3_vector(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, s
 				
 			}
 
-			HLINE;
-			PRINT_MALLOC(S_b_buffer,S_smpls_per_cl_block,1);
+			// HLINE;
+			// PRINT_MALLOC(S_b_buffer,S_smpls_per_cl_block,1);
 
 			// For now we do the actual join here:
 			for(size_t k = 0; k < R_smpls_per_cl_block; ++k){
+
 				for(size_t l = 0; l < S_smpls_per_cl_block; ++l){
 					if(S_b_buffer[l] != 0 && R_a_buffer[k] % S_b_buffer[l] == S_c_buffer[l]){
-						dest[2 * dest_index] = i * R_smpls_per_cl_block + k; 
-						dest[2 * dest_index + 1] = j * S_smpls_per_cl_block + l;
+						size_t r_i = (k % cl_size) * R_samples_per_entry + (k / cl_size);
+						size_t s_j = (l % cl_size) * S_samples_per_entry + (l / cl_size);
+						// printf("%d,%d\n",i * R_smpls_per_cl_block + r_i,j * S_smpls_per_cl_block + s_j); 
+						// printf("%d,%d,%d\n",R_a_buffer[k],S_b_buffer[l],j * S_smpls_per_cl_block + s_j,S_c_buffer[l]); 
+						dest[2 * dest_index] = i * R_smpls_per_cl_block + r_i;
+						dest[2 * dest_index + 1] = j * S_smpls_per_cl_block + s_j;
 						dest_index++;
 					} 
 				}
@@ -742,8 +747,9 @@ void q3_vector(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, s
 		}
 
 	}
-	
+	// HLINE;
 	*dest_rows = dest_index;
+	// PRINT_MALLOC(dest,*dest_rows,2);
 }
 
 

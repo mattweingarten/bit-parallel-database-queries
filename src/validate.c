@@ -193,8 +193,8 @@ bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols
         // PRINT_MALLOC( 32, S,S_rows,S_cols);
         // HLINE;
 
-        // PRINT_MALLOC(R,R_rows,R_cols);
-        PRINT_MALLOC(S,S_rows,S_cols);
+        PRINT_MALLOC(R,R_rows,R_cols);
+        // PRINT_MALLOC(S,S_rows,S_cols);
         // // PRINT_aligned_alloc( 32, R,R_rows,R_cols);
         // HLINE;
 
@@ -226,7 +226,7 @@ bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols
         uint32_t* re_comp = realloc(comp,comp_out_size * 2 *  sizeof(uint32_t));
 
         correct = compare_join(re_gt,re_comp,gt_out_size,comp_out_size);
-        printf("Outsize: %d  -> ",gt_out_size);
+        // printf("Outsize: %d  -> ",gt_out_size);
     
 
         free(R_weave);
