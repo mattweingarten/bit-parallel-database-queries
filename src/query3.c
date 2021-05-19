@@ -288,6 +288,10 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 			}
 			
 
+			HLINE;
+			// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
+			// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
+			PRINT_MALLOC(S_b_buffer,S_smpls_per_cl_block,1);
 			// For now we do the actual join here:
 			for(size_t k = 0; k < R_smpls_per_cl_block; ++k){
 				for(size_t l = 0; l < S_smpls_per_cl_block; ++l){
@@ -681,8 +685,7 @@ void q3_vector(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, s
 
 
 		}
-		HLINE;
-		PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
+
 		// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
 
 		__m256i S_b_vector;
@@ -700,13 +703,12 @@ void q3_vector(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, s
 					next_word = _mm256_loadu_si256(dS + j * cl_block_size + k * cl_size + m);
 				
 					for (size_t n = 0; n < S_samples_per_entry;++n){
-						uint32_t n_shift_b_index = n * R_cols + 1;
-						uint32_t n_shift_c_index = n * R_cols + 2;
+						uint32_t n_shift_b_index = n * S_cols + 1;
+						uint32_t n_shift_c_index = n * S_cols + 2;
 
-						__m256i k_th_bit_S_b = _mm256_srli_epi32(next_word,n_shift_b_index);
-						__m256i k_th_bit_S_c = _mm256_srli_epi32(next_word,n_shift_c_index);
 						
 
+						__m256i k_th_bit_S_b = _mm256_srli_epi32(next_word,n_shift_b_index);
 						k_th_bit_S_b = _mm256_and_si256(k_th_bit_S_b,_mm256_set_epi32(1,1,1,1,1,1,1,1));
 						k_th_bit_S_b = _mm256_slli_epi32(k_th_bit_S_b,word_shift_index);
 						S_b_vector = _mm256_add_epi32(S_b_vector,k_th_bit_S_b);
@@ -715,6 +717,7 @@ void q3_vector(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, s
 						_mm256_storeu_si256(S_b_buffer + n * cl_size + m,S_b_vector);
 
 						
+						__m256i k_th_bit_S_c = _mm256_srli_epi32(next_word,n_shift_c_index);
 						k_th_bit_S_c = _mm256_and_si256(k_th_bit_S_c,_mm256_set_epi32(1,1,1,1,1,1,1,1));
 						k_th_bit_S_c = _mm256_slli_epi32(k_th_bit_S_c,word_shift_index);
 						S_c_vector = _mm256_add_epi32(S_c_vector,k_th_bit_S_c);
@@ -727,8 +730,10 @@ void q3_vector(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, s
 			}
 
 			// HLINE;
+			// // PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
+			// HLINE;
 			// PRINT_MALLOC(S_b_buffer,S_smpls_per_cl_block,1);
-
+			// PRINT_MALLOC()
 			// For now we do the actual join here:
 			for(size_t k = 0; k < R_smpls_per_cl_block; ++k){
 

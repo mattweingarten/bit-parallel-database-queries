@@ -61,6 +61,15 @@ uint32_t two_zero_gen(size_t i, size_t j){
     }
 }
 
+uint32_t first_col_gen(size_t i, size_t j){
+    if(j == 0){
+        return i;
+    }
+    else {
+        return 2;
+    }
+}
+
 
 uint32_t* generateDB(size_t rows,size_t cols, generator gen){
     uint32_t* res = (uint32_t*)  malloc(rows * cols * sizeof(uint32_t));
