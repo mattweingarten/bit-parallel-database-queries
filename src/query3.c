@@ -1128,3 +1128,180 @@ void q3_vector_v2(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 	}
 	*dest_rows = dest_index;
 }
+
+
+
+
+void q3_vector_v3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
+
+
+	size_t dest_index = 0;
+
+	size_t cl_block_size = wordsize * cl_size;
+	
+	size_t R_num_cl_blocks = (R_rows * R_cols) / cl_block_size;  
+	size_t R_smpls_per_cl_block = cl_block_size / R_cols;
+	size_t R_samples_per_entry = 32 / R_cols;
+	size_t R_samples_per_cl = cl_size * R_samples_per_entry;
+
+	size_t S_num_cl_blocks = (S_rows * S_cols) / cl_block_size;
+	size_t S_smpls_per_cl_block = cl_block_size / S_cols;
+	size_t S_samples_per_entry = 32 / S_cols;
+	size_t S_samples_per_cl = cl_size * S_samples_per_entry;
+
+
+	uint32_t * R_a_buffer = (uint32_t *) aligned_alloc(32,R_smpls_per_cl_block * sizeof(uint32_t));
+	uint32_t * S_b_buffer = (uint32_t *) aligned_alloc(32,S_smpls_per_cl_block * sizeof(uint32_t));
+	
+	uint32_t * S_c_buffer = (uint32_t *) aligned_alloc(32,S_smpls_per_cl_block * sizeof(uint32_t));
+
+
+	__m256i R_a_vector;
+	__m256i next_word;
+	for(size_t i = 0; i < R_num_cl_blocks; ++i){
+		
+		memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
+		for(size_t k  = 0; k < wordsize;++k){
+			uint32_t word_shift_index = wordsize - k - 1;
+			for(size_t m = 0; m < cl_size; m+= 8){ 
+
+
+				next_word = _mm256_loadu_si256(dR + i * cl_block_size + k * cl_size + m);
+				for (size_t n = 0; n < R_samples_per_entry;++n){
+					uint32_t n_shift_index = n * R_cols;
+					// her we can get rid of a shift I think
+					__m256i k_th_bit_R_a = _mm256_srli_epi32(next_word,n_shift_index);
+					k_th_bit_R_a = _mm256_and_si256(k_th_bit_R_a,_mm256_set_epi32(1,1,1,1,1,1,1,1)); 
+					k_th_bit_R_a = _mm256_slli_epi32(k_th_bit_R_a,word_shift_index);
+					// PRINT_32_BIT_VECTOR(k_th_bit_R_a);
+					R_a_vector = _mm256_loadu_si256(R_a_buffer + n * cl_size + m);
+					R_a_vector = _mm256_add_epi32(R_a_vector,k_th_bit_R_a);
+					_mm256_store_si256(R_a_buffer + n * cl_size + m,R_a_vector);
+				}
+			}
+
+
+
+		}
+
+
+		__m256i S_b_vector;
+		__m256i S_c_vector;
+		for(size_t j = 0; j < S_num_cl_blocks;++j){
+			
+			memset(S_b_buffer,0,S_smpls_per_cl_block * 4);
+			memset(S_c_buffer,0,S_smpls_per_cl_block * 4);
+
+			for(size_t k  = 0 ; k < wordsize; ++k){
+				uint32_t word_shift_index = wordsize - k - 1;
+				for (size_t m = 0; m < cl_size; m += 8){
+
+
+					next_word = _mm256_loadu_si256(dS + j * cl_block_size + k * cl_size + m);
+				
+					for (size_t n = 0; n < S_samples_per_entry;++n){
+						uint32_t n_shift_b_index = n * S_cols + 1;
+						uint32_t n_shift_c_index = n * S_cols + 2;
+
+		
+						__m256i k_th_bit_S_b = _mm256_srli_epi32(next_word,n_shift_b_index);
+						k_th_bit_S_b = _mm256_and_si256(k_th_bit_S_b,_mm256_set_epi32(1,1,1,1,1,1,1,1));
+						k_th_bit_S_b = _mm256_slli_epi32(k_th_bit_S_b,word_shift_index);
+						S_b_vector = _mm256_add_epi32(S_b_vector,k_th_bit_S_b);
+						S_b_vector = _mm256_loadu_si256(S_b_buffer + n * cl_size + m);
+						S_b_vector = _mm256_add_epi32(S_b_vector,k_th_bit_S_b);
+						_mm256_storeu_si256(S_b_buffer + n * cl_size + m,S_b_vector);
+
+		
+						__m256i k_th_bit_S_c = _mm256_srli_epi32(next_word,n_shift_c_index);
+						k_th_bit_S_c = _mm256_and_si256(k_th_bit_S_c,_mm256_set_epi32(1,1,1,1,1,1,1,1));
+						k_th_bit_S_c = _mm256_slli_epi32(k_th_bit_S_c,word_shift_index);
+						S_c_vector = _mm256_add_epi32(S_c_vector,k_th_bit_S_c);
+						S_c_vector = _mm256_loadu_si256(S_c_buffer + n * cl_size + m);
+						S_c_vector = _mm256_add_epi32(S_c_vector,k_th_bit_S_c);
+						_mm256_storeu_si256(S_c_buffer + n * cl_size + m,S_c_vector);
+					}
+				}
+				
+			}
+
+	
+
+
+			for(size_t l = 0; l < S_smpls_per_cl_block; ++l){
+				uint32_t d = S_b_buffer[l];
+				uint32_t s_c = S_c_buffer[l];
+				uint32_t L,L2,m,sh1,sh2;
+
+				switch(d){
+					case 0: 
+						
+						continue; // here we just keep going and do not compute the values
+						break;
+					case 1:
+						m = 1; sh1 = sh2 = 0;
+						break;
+					case 2:  
+						m = 1; sh1 = 1; sh2 = 0;
+						break;
+					default:
+						__asm("bsrl %1, %0" : "=r"(L) : "r"(d-1) : );  		//ceil(log2)
+						L += 1;												//ceil(log2)
+						L2 = (uint32_t) (L < 32? 1 << L : 0);
+						m = 1 + (((uint64_t) (L2 - d)) << 32) / d;
+						sh1 = 1; sh2 = L-1;
+				}
+
+
+				__m256i m_v = _mm256_set1_epi32(m);
+
+				__m256i d_v = _mm256_set1_epi32(d);
+				__m256i s_c_v = _mm256_set1_epi32(s_c);
+
+
+				for(size_t k = 0; k < R_smpls_per_cl_block; k+= 8){
+				
+					__m256i x_v = _mm256_loadu_si256(R_a_buffer + k);
+					__m256i t_lo = _mm256_mul_epu32(x_v,m_v);
+					t_lo = _mm256_srli_epi64(t_lo,32);
+					__m256i t_hi = _mm256_srli_epi64(x_v,32);
+					t_hi = _mm256_mul_epu32(t_hi,m_v);
+					__m256i t = _mm256_blend_epi32(t_lo,t_hi,0b10101010);
+					__m256i res = _mm256_sub_epi32(x_v,t);
+					res = _mm256_srli_epi32(res,sh1);
+					res = _mm256_add_epi32(res,t);
+					res = _mm256_srli_epi32(res,sh2);
+					res = _mm256_mullo_epi32(res,d_v);
+					res = _mm256_sub_epi32(x_v,res);
+					__m256i eq = _mm256_cmpeq_epi32(res,s_c_v);
+					uint32_t eq_vector[8];
+					memcpy(eq_vector, &eq, sizeof(eq_vector));
+	
+					for(size_t h = 0; h < 8; ++h){
+						// if(S_b_buffer[l] != 0 && R_a_buffer[k + h] % S_b_buffer[l] == S_c_buffer[l] && eq_vector[h] != 4294967295L){
+						// 	printf("[%d] %u,%u,%u\n",h,R_a_buffer[k + h],S_b_buffer[l],S_c_buffer[l] );
+
+						// 	// LINE;
+						// 	PRINT_32_BIT_VECTOR(res);
+						// 	PRINT_32_BIT_VECTOR(s_c_v);
+						// 	PRINT_32_BIT_VECTOR(eq);
+						// 	// printf("[%d]",eq)
+						// 	LINE;		
+						// }
+						if(eq_vector[h] == 4294967295L){
+							
+							size_t r_i = ((h + k) % cl_size) * R_samples_per_entry + ((h + k) / cl_size);
+							size_t s_j = (l % cl_size) * S_samples_per_entry + (l / cl_size);
+							dest[2 * dest_index] = i * R_smpls_per_cl_block + r_i;
+							dest[2 * dest_index + 1] = j * S_smpls_per_cl_block + s_j;
+							dest_index++;
+
+						}
+					}
+				}
+			}
+		}
+
+	}
+	*dest_rows = dest_index;
+}

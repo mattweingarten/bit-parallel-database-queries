@@ -45,14 +45,6 @@ void test_lt(void){
 // * t = m*x >> w                                   [high part of unsigned multiplication with 2w bits]
 // * result = floor(x/d) = (((x-t) >> sh1) + t) >> sh2
 
-//THIS IS BORROWED FROM AGNER AND FOG (THANKS BOYS!)
-//bsrq for 8 byte word and bsrl for 4 byte word
-
-static inline uint32_t bit_scan_reverse(uint32_t a) { // this computes log2(a)
-    uint32_t r;
-    __asm("bsrl %1, %0" : "=r"(r) : "r"(a) : );
-    return r;
-}
 
 
 // static inline uint32_t bit_scan_reverse(uint64_t a) {
@@ -84,9 +76,10 @@ static inline uint32_t bit_scan_reverse(uint32_t a) { // this computes log2(a)
 
 
 uint32_t fast_uint_div_v2(uint32_t dividend, uint32_t d){
-	uint32_t sh1,sh2,t,res;
+	uint32_t sh1,sh2,t,res,L;
 	// L = 
-	int L = bit_scan_reverse(d - 1) + 1;
+	__asm("bsrl %1, %0" : "=r"(L) : "r"(d-1) : );
+	L += 1;
 	uint64_t L2 = 1L << L;
 	uint64_t  N2 = 1L << 31;
 	uint64_t m_full = floor(N2 * (L2 - d) / d) + 1;
@@ -105,7 +98,8 @@ uint32_t fast_uint_div(uint32_t dividend, uint32_t d){
 	uint32_t L,L2,m,sh1,sh2;
 	uint32_t t;
 	uint32_t res;
-	L = bit_scan_reverse(d - 1) + 1;
+	__asm("bsrl %1, %0" : "=r"(L) : "r"(d-1) : );
+	L += 1;
 	// uint32_t L_test = log()
 	// assert(L < 32);
 	// L2 = 1 << L;
@@ -131,7 +125,8 @@ uint32_t fast_uint_div(uint32_t dividend, uint32_t d){
 	// PRINT_32_B(m);LINE;
 
 
-	L = bit_scan_reverse(d - 1) + 1;
+	__asm("bsrl %1, %0" : "=r"(L) : "r"(d-1) : );
+	L += 1;
 	L2 = (uint32_t) (L < 32? 1 << L : 0);
 	m = 1 + (((uint64_t) (L2 - d)) << 32) / d;
 	sh1 = 1; sh2 = L-1;
@@ -186,7 +181,8 @@ void test_fast_uint_div(size_t N){
 void fast_integer_division(uint32_t * x,uint32_t d,  uint32_t * dest,size_t N){
 	uint32_t L,L2,m,sh1,sh2;
 
-	L = bit_scan_reverse(d - 1) + 1;
+	__asm("bsrl %1, %0" : "=r"(L) : "r"(d-1) : );
+	L += 1;
 	L2 = (uint32_t) (L < 32? 1 << L : 0);
 	m = 1 + (((uint64_t) (L2 - d)) << 32) / d;
 	sh1 = 1; sh2 = L-1;
@@ -293,7 +289,8 @@ void test_integer_vector_mod(size_t N){
 void fast_integer_mod(uint32_t * x,uint32_t d,  uint32_t * dest,size_t N){
 	uint32_t L,L2,m,sh1,sh2;
 
-	L = bit_scan_reverse(d - 1) + 1;
+	__asm("bsrl %1, %0" : "=r"(L) : "r"(d-1) : );
+	L += 1;
 	L2 = (uint32_t) (L < 32? 1 << L : 0);
 	m = 1 + (((uint64_t) (L2 - d)) << 32) / d;
 	sh1 = 1; sh2 = L-1;
@@ -310,7 +307,7 @@ void fast_integer_mod(uint32_t * x,uint32_t d,  uint32_t * dest,size_t N){
 		t_hi = _mm256_mul_epu32(t_hi,m_v);
 		__m256i t = _mm256_blend_epi32(t_lo,t_hi,0b10101010);
 		__m256i res = _mm256_sub_epi32(x_v,t);
-		res = _mm256_srli_epi32(res,sh1);
+		res = _mm256_srli_epi32(res,1);
 		res = _mm256_add_epi32(res,t);
 		res = _mm256_srli_epi32(res,sh2);
 		// HLINE;
