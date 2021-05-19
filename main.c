@@ -44,8 +44,8 @@ int main(int argc, char **argv) {
 	// res = _mm256_srli_epi32(res,0);
 	// PRINT_32_BIT_VECTOR(t);
 	
-	test_integer_vector_division(10000);
-
+	// test_integer_vector_division(10000);
+	test_integer_vector_mod(1000);
 	
 	// validate_query(&q3_vector_v2,Q3);
 	

@@ -247,48 +247,84 @@ void test_integer_vector_division(size_t N){
 	free(input1);
 	free(dest);
 	
-
 }
 
 
 
-uint32_t fast_mod(uint32_t x, uint32_t y){
-	return x % y;
-}
+void test_integer_vector_mod(size_t N){
+	assert(N % 8 == 0 && "Require N to be divisible by 8!");
+	uint32_t* input1 = aligned_alloc(64,N * sizeof(uint32_t));
+	uint32_t* dest = aligned_alloc(64,N * sizeof(uint32_t));
+	for(size_t i = 0;i < N;++i ){
+		input1[i] = rand_gen(0,0);
+	}
 
 
-void test_fast_uint_mod(size_t N){
-	uint32_t res;
-	size_t count = 0;
-	size_t count_corr = 0;
-	for(size_t i = 0; i < N;++i){
-		for(size_t j = 3; j < N;++j){
-			// res = fast_uint_div(i,j);
-			uint32_t x = rand_gen(0,0);
-			uint32_t y = rand_gen(0,0) + 1;
-			res = fast_mod(x,y);
-			bool correct = x % y == res;
+	bool overall_correct = true;
+	bool correct;
+	for(size_t k = 0; k < N; ++k){
+		uint32_t divisor = rand_gen(0,0) + 2; //divisior > 1
+		// fast_integer_division(input1,divisor,dest,N);
+		fast_integer_mod(input1,divisor,dest,N);
+		for(size_t i = 0;i < N;++i ){
+			correct = input1[i] % divisor == dest[i];
 			if(!correct){
+				overall_correct = false;
 				printf(RED "FAILED" RESET);
-				printf("%u/%u = %u, but got %u\n",x,y,(x%y),res);
-			}else{
-				count_corr++;
-				// printf(GRN "PASSED" RESET);
-				// printf("%u/%u = %u\n",i,j,res);
+				printf(" %u mod %u = %u, but got %u\n",input1[i],divisor,input1[i] % divisor,dest[i]);
 			}
-			count++;
-			// assert(((i / j)  == fast_uint_div(i,j)));
 		}
 	}
 
-	printf("Finished test: %u/%u correct \n",count_corr,count);
+
+
+	if(overall_correct){
+		printf(GRN "PASSED" RESET);printf(" INTEGER MODULO TEST\n");
+	}
+
+
+
+
+	free(input1);
+	free(dest);
+	
 }
 
+void fast_integer_mod(uint32_t * x,uint32_t d,  uint32_t * dest,size_t N){
+	uint32_t L,L2,m,sh1,sh2;
+
+	L = bit_scan_reverse(d - 1) + 1;
+	L2 = (uint32_t) (L < 32? 1 << L : 0);
+	m = 1 + (((uint64_t) (L2 - d)) << 32) / d;
+	sh1 = 1; sh2 = L-1;
 
 
+	__m256i m_v = _mm256_set1_epi32(m);
+	__m256i d_v = _mm256_set1_epi32(d);
+	for(size_t i = 0; i < N ; i+= 8){
+		__m256i x_v =  _mm256_loadu_si256(x + i);
 
-// uint32_t uint_sub_for_vector(uint32_t x , uint32_t y){
-	
-	
-// 	return 
-// }
+		__m256i t_lo = _mm256_mul_epu32(x_v,m_v);
+		t_lo = _mm256_srli_epi64(t_lo,32);
+		__m256i t_hi = _mm256_srli_epi64(x_v,32);
+		t_hi = _mm256_mul_epu32(t_hi,m_v);
+		__m256i t = _mm256_blend_epi32(t_lo,t_hi,0b10101010);
+		__m256i res = _mm256_sub_epi32(x_v,t);
+		res = _mm256_srli_epi32(res,sh1);
+		res = _mm256_add_epi32(res,t);
+		res = _mm256_srli_epi32(res,sh2);
+		// HLINE;
+		// PRINT_32_BIT_VECTOR(res);
+		// PRINT_32_BIT_VECTOR(d_v);
+		res = _mm256_mullo_epi32(res,d_v);
+		// PRINT_32_BIT_VECTOR(res);
+		res = _mm256_sub_epi32(x_v,res);
+		// PRINT_32_BIT_VECTOR(res);
+		// return;
+		_mm256_storeu_si256(dest + i,res);
+
+	}
+
+
+}
+
