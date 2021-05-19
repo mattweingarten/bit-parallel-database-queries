@@ -1,6 +1,7 @@
 {
     "files.associations": {
         "debug.h": "c",
-        "stdbool.h": "c"
+        "stdbool.h": "c",
+        "stdint.h": "c"
     }
 }
