@@ -24,7 +24,7 @@ int main(int argc, char **argv) {
 	// test_integer_vector_division(10000);
 	// test_integer_vector_mod(1000);
 	
-	validate_query(&q3_vector_v3,Q3);
+	validate_query(&q3_vector_v4,Q3);
 	// bool correct;
 	
 	// correct = test_q3(&q3_vector_v3,mod_gen,mod_gen,128,4,128,4);

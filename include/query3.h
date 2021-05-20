@@ -7,6 +7,13 @@
 #include <string.h>
 
 
+struct modular_operation {
+    uint32_t m;
+    uint32_t sh1;
+    uint32_t sh2;
+};
+
+
 uint32_t cartesian_product_size(int R_rows, int R_cols, int S_rows, int S_cols);
 
 
@@ -35,4 +42,6 @@ void q3_unroll_v2(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 
 void q3_vector_v2(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size);
 void q3_vector_v3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size);
+
+void q3_vector_v4(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size);
 #endif
