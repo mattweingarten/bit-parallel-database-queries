@@ -69,7 +69,10 @@ void validate_query(void* query, enum Query type){
 
     generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
     size_t row_sizes[5] = {128,256,512,2048,4096};
-    size_t cols_sizes[4] = {2,8,16,32};
+	size_t cols_sizes[4] = {4,8,16,32};
+	if(type == Q3 ||type == Q3b)
+		cols_sizes[0] = 2;
+     
     // TODO: DB with 64 columns break
     bool correct;
     size_t count_correct = 0;
