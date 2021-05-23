@@ -291,6 +291,15 @@ void perf_q3_R_rows(char* filename, q3_t q,generator gen,size_t R_row_max, size_
 }
 
 
+void perf_q3_rows(char* filename, q3_t q,generator gen,size_t row_max, size_t R_cols,size_t S_cols,size_t step_size){
+	for(size_t i = step_size; i <= row_max;i += step_size){
+		double cycles = perf_test_q3(q,gen,gen,i,R_cols,i,S_cols);
+		saveCycledataToFile_v1(filename,cycles,i,R_cols,S_cols);
+		printf("Cycles for rows = %d => %lf\n",i,cycles);
+	}
+}
+
+
 
 void perf_q3_compare_block(char * filename, q3b_t q,size_t max_row_size){
 	for(size_t i = 1024; i <= max_row_size; i *= 2){
@@ -345,5 +354,21 @@ void saveCycledataToFile( char* filename,size_t cycles, size_t rows, size_t cols
       printf("ERROR: cannot write to file!\n");   
    }
    fprintf(fptr,"%d, %d, %d, %d\n",cycles,rows,cols,gen);
+   fclose(fptr);
+}
+
+
+
+void saveCycledataToFile_v1( char* filename,double cycles, size_t rows, size_t R_cols, size_t S_cols){
+   char buf[1024];
+   strcpy(buf, Q3_PATH );
+   strcat(buf,filename);
+   FILE *fptr;
+   fptr = fopen(buf,"a");
+   if(fptr == NULL)
+   {
+      printf("ERROR: cannot write to file!\n");   
+   }
+   fprintf(fptr,"%lf, %d, %d, %d\n",cycles,rows,R_cols,S_cols);
    fclose(fptr);
 }

@@ -5,6 +5,7 @@
 #include <string.h>
 #include "../include/debug.h"
 #include "../include/query3.h"
+// #include "../include/tsc_x86.h"
 
 #include <immintrin.h>
 
@@ -229,6 +230,11 @@ void q3_weave_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_ro
 void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
 
 
+	int64_t start1,end1;
+	int64_t start2,end2;
+	int64_t start3,end3;
+
+
 	size_t dest_index = 0;
 
 	size_t cl_block_size = wordsize * cl_size;
@@ -251,6 +257,7 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 
 
 	for(size_t i = 0; i < R_num_cl_blocks; ++i){
+		start1 = start_tsc();
 		memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
 		for(size_t k  = 0; k < wordsize;++k){
 			for(size_t m = 0; m < cl_size; ++m){
@@ -262,9 +269,11 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 			}
 		}
 
-
+		end1 = stop_tsc(start1);
 		for(size_t j = 0; j < S_num_cl_blocks;++j){
+			
 
+			start2 = start_tsc();
 			memset(S_b_buffer,0,S_smpls_per_cl_block * 4);
 			memset(S_c_buffer,0,S_smpls_per_cl_block * 4);
 			for(size_t k  = 0 ; k < wordsize; ++k){
@@ -288,11 +297,15 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 			}
 			
 
-			HLINE;
+			end2 = stop_tsc(start2);
+
+			// HLINE;
 			// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
 			// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
-			PRINT_MALLOC(S_b_buffer,S_smpls_per_cl_block,1);
+			// PRINT_MALLOC(S_b_buffer,S_smpls_per_cl_block,1);
 			// For now we do the actual join here:
+
+			start3 = start_tsc();
 			for(size_t k = 0; k < R_smpls_per_cl_block; ++k){
 				for(size_t l = 0; l < S_smpls_per_cl_block; ++l){
 					if(S_b_buffer[l] != 0 && R_a_buffer[k] % S_b_buffer[l] == S_c_buffer[l]){
@@ -302,7 +315,8 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 					} 
 				}
 			}
-
+			end3 = stop_tsc(start3);
+			printf("%u %u %u\n",end1,end2,end3);
 		}
 	}
 	
@@ -1156,6 +1170,10 @@ void q3_vector_v2(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 
 void q3_vector_v3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
 
+	int64_t start0,end0;
+	int64_t start1,end1;
+	int64_t start2,end2;
+	int64_t start3,end3;
 
 	size_t dest_index = 0;
 
@@ -1182,6 +1200,10 @@ void q3_vector_v3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 	__m256i next_word;
 	for(size_t i = 0; i < R_num_cl_blocks; ++i){
 		
+
+		start1 = start_tsc();
+
+
 		memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
 		for(size_t k  = 0; k < wordsize;++k){
 			uint32_t word_shift_index = wordsize - k - 1;
@@ -1201,16 +1223,20 @@ void q3_vector_v3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 					_mm256_store_si256(R_a_buffer + n * cl_size + m,R_a_vector);
 				}
 			}
-
-
+	
+			
 
 		}
+		end1 = stop_tsc(start1);
 
 
 		__m256i S_b_vector;
 		__m256i S_c_vector;
 		for(size_t j = 0; j < S_num_cl_blocks;++j){
 			
+
+			start2 = start_tsc();
+
 			memset(S_b_buffer,0,S_smpls_per_cl_block * 4);
 			memset(S_c_buffer,0,S_smpls_per_cl_block * 4);
 
@@ -1218,9 +1244,7 @@ void q3_vector_v3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 				uint32_t word_shift_index = wordsize - k - 1;
 				for (size_t m = 0; m < cl_size; m += 8){
 
-
 					next_word = _mm256_loadu_si256(dS + j * cl_block_size + k * cl_size + m);
-				
 					for (size_t n = 0; n < S_samples_per_entry;++n){
 						uint32_t n_shift_b_index = n * S_cols + 1;
 						uint32_t n_shift_c_index = n * S_cols + 2;
@@ -1247,9 +1271,11 @@ void q3_vector_v3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 				
 			}
 
+			end2 = stop_tsc(start2);
+
 	
 
-
+			start3 = start_tsc();
 			for(size_t l = 0; l < S_smpls_per_cl_block; ++l){
 				uint32_t d = S_b_buffer[l];
 				uint32_t s_c = S_c_buffer[l];
@@ -1322,6 +1348,10 @@ void q3_vector_v3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 					}
 				}
 			}
+
+			end3 = stop_tsc(start3);
+
+			printf("%u %u %u\n",end1,end2,end3);
 		}
 
 	}
@@ -1336,6 +1366,11 @@ void q3_vector_v3(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 
 
 void q3_vector_v4(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
+
+
+	int64_t start1,end1;
+	int64_t start2,end2;
+	int64_t start3,end3;
 
 
 	size_t dest_index = 0;
@@ -1364,7 +1399,7 @@ void q3_vector_v4(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 	__m256i S_c_vector;
 	__m256i next_word;
 	for(size_t j = 0; j < S_num_cl_blocks;++j){
-		
+		start1 = start_tsc();
 		memset(S_b_buffer,0,S_smpls_per_cl_block * 4);
 		memset(S_c_buffer,0,S_smpls_per_cl_block * 4);
 
@@ -1428,11 +1463,17 @@ void q3_vector_v4(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 
 		}
 
+		end1 = stop_tsc(start1);
 
 
+
+
+
+		
 		for(size_t i = 0; i < R_num_cl_blocks; ++i){
 		__m256i R_a_vector;
 		__m256i next_word_R;
+		start2 = start_tsc();
 		memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
 			for(size_t k  = 0; k < wordsize;++k){
 				uint32_t word_shift_index = wordsize - k - 1;
@@ -1454,7 +1495,11 @@ void q3_vector_v4(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 				}
 			}
 
+			end2 = stop_tsc(start2);
 
+
+
+			start3 = start_tsc();
 			for(size_t l = 0; l < S_smpls_per_cl_block;++l){
 				struct modular_operation mod_l = mod_ops[l];
 				uint32_t s_b = S_b_buffer[l];
@@ -1496,6 +1541,8 @@ void q3_vector_v4(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 				}
 
 			}
+			end3 = stop_tsc(start3);
+			printf("%u %u %u\n",end1,end2,end3);
 		}// end cl_block R
 	} //end cl_block S
 
@@ -1504,5 +1551,6 @@ void q3_vector_v4(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 	free(R_a_buffer);
 	free(S_b_buffer);
 	free(S_c_buffer);
+	free(mod_ops);
 	*dest_rows = dest_index;
 }
