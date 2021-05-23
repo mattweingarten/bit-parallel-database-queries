@@ -31,6 +31,7 @@ double perf_test_q2(q2_t q,generator gen,size_t rows,size_t cols);
 double perf_test_q3(q3_t q,generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols);
 
 void perf_q3_R_rows(char* filename, q3_t q,generator gen,size_t R_row_max, size_t step_size,size_t R_cols,size_t S_rows, size_t S_cols);
+void perf_q3_rows(char* filename, q3_t q,generator gen,size_t row_max, size_t R_cols,size_t S_cols,size_t step_size);
 double perf_test_q3_blocked(q3b_t q,generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols,size_t block_size);
 
 
@@ -41,6 +42,6 @@ void perf_q3_compare_block(char * filename, q3b_t q,size_t max_row_size);
 
 void saveCycledataToFile(char* filename,size_t cycles, size_t rows, size_t cols, size_t gen);
 void saveCycledataToFile_q3( char* filename,double cycles, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols);
+void saveCycledataToFile_v1( char* filename,double cycles, size_t rows, size_t R_cols, size_t S_cols);
 void saveCycledataToFile_q3_block_cmp( char* filename,size_t cycles, size_t R_rows, size_t S_rows,size_t block_size);
-
 #endif 
