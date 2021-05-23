@@ -69,7 +69,10 @@ void validate_query(void* query, enum Query type){
 
     generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
     size_t row_sizes[5] = {128,256,512,2048,4096};
-    size_t cols_sizes[4] = {2,8,16,32};
+	size_t cols_sizes[4] = {2,8,16,32};
+	if(type == Q2)
+		cols_sizes[0] = 4;
+     
     // TODO: DB with 64 columns break
     bool correct;
     size_t count_correct = 0;
@@ -78,6 +81,7 @@ void validate_query(void* query, enum Query type){
     for(int i = 0; i < 5; i++){
         for(int j = 0; j < 5; j++){
             for(int k = 0;k < 4;k++){
+				if(cols_sizes[k] * row_sizes[j] < 512) continue;
                 bool correct;
 
                 switch (type)
@@ -150,15 +154,16 @@ bool test_q1(q1_t q,generator gen,size_t rows,size_t cols){
     bool correct = true;
     for(size_t i = 0; i < N_RUNS; ++i){
         uint32_t * db = generateDB(rows,cols,gen);
-       
+		
+		
         uint32_t * gt =  q1_groundtruth(db,rows,cols);
-        
-         
+		 
         uint32_t * ml = weave_samples_wrapper(db,rows,cols);
 
         uint32_t * res = q1_wrapper(q,ml,rows,cols);
+		
         correct = correct && compare(res,gt,rows);
-        
+     		
         free(db);
         free(gt);
         free(ml);

@@ -1364,7 +1364,7 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
 			// load correct vector
-			a1 = (__m256i) _mm256_loadu_pd(d + (i * 256) + j * 8);
+			a1 = (__m256i) _mm256_load_pd(d + (i * 256) + j * 8);
 			
 			// GOOD WAY TO INSPECT __mXXX values
 			/*
@@ -1392,7 +1392,7 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			
 			//now for second vector of the cache line
 			// load correct vector
-			a2 = (__m256i) _mm256_loadu_ps(d + (i * 256) + j * 8 + 4); // + 4 as 4 64 bit words per vector
+			a2 = (__m256i) _mm256_load_ps(d + (i * 256) + j * 8 + 4); // + 4 as 4 64 bit words per vector
 			
 			// shift right by one
 			b2 = _mm256_srli_epi64(a2, 1);
@@ -1414,7 +1414,7 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 		// read results out 
 		uint64_t cres[4];
 		memcpy(cres, &res1, sizeof(cres));
-		//_mm256_store_pd(cres,(__m256d) res1); // causes crash for some reason.. investigate!
+		//_mm256_storeu_pd(cres,(__m256d) res1); // causes crash for some reason.. investigate!
 		
 		uint64_t cres0 = cres[0];
 		uint64_t cres1 = cres[1];
@@ -1480,6 +1480,825 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			cres32 = cres32 >> num_features;
 			//printf("SAMPLE NR: %i \n", i * samples_per_cl + (4 + 3) * samples_per_block + m);
 		}
+		
+		// reset temp and res
+		res1 = _mm256_setzero_si256();
+		res2 = _mm256_setzero_si256();
+		
+		temp1 = _mm256_setzero_si256();
+		temp2 = _mm256_setzero_si256();
+	}
+}
+
+
+// better indexing, scalar replacement ?
+// maybe storeu is faster than memcpy ? (maybe do a direct comparison too)
+void q1_vector_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+
+	__m256i a1;
+	__m256i b1;
+	__m256i xor1;
+	__m256i a2;
+	__m256i b2;
+	__m256i xor2;
+	
+	__m256i res1 = _mm256_setzero_si256();
+	__m256i res2 = _mm256_setzero_si256();
+	
+	__m256i temp1 = _mm256_setzero_si256();
+	__m256i temp2 = _mm256_setzero_si256();
+	
+	int samples_per_block = 64 / num_features;
+	int samples_per_cl = samples_per_block * 8;
+   	int num_cl = ceil(((float)num_samples) / samples_per_cl);
+	
+	uint64_t * d = data;
+	int load_idx = 0;
+	int res_idx = 0;
+	
+	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
+			
+			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
+			// load correct vector
+			//__m256i a0 = (__m256i) _mm256_loadu_pd(d + (i * 256) + j * 8);
+			a1 = (__m256i) _mm256_load_pd(d + load_idx);
+			/*
+			if(i == 0){
+				int64_t v64val0[4];
+				memcpy(v64val0, &a0, sizeof(v64val0));
+				PRINT_64_B(v64val0[0]);
+				LINE;
+				int64_t v64val[4];
+				memcpy(v64val, &a1, sizeof(v64val));
+				PRINT_64_B(v64val[0]);
+				LINE;
+				LINE;
+				LINE;
+			}
+			*/
+			
+			// shift right by one
+			b1 = _mm256_srli_epi64(a1, 1);
+			//xor 
+			xor1 = _mm256_xor_si256(a1, b1);
+			
+			//compute res
+			b1 = _mm256_and_si256 (xor1, b1); //xor & b
+			b1 = _mm256_andnot_si256 (temp1, b1); //(xor & b) & (~temp)
+			res1 = _mm256_or_si256 (res1, b1); // res |= ^
+			
+			//compute temp
+			a1 = _mm256_and_si256 (a1, xor1);
+			temp1 = _mm256_or_si256 (temp1, a1);
+			
+			//now for second vector of the cache line
+			// load correct vector
+			a2 = (__m256i) _mm256_load_ps(d + load_idx + 4); // + 4 as 4 64 bit words per vector
+			
+			// shift right by one
+			b2 = _mm256_srli_epi64(a2, 1);
+			//xor 
+			xor2 = _mm256_xor_si256(a2, b2);
+			
+			//compute res
+			b2 = _mm256_and_si256 (xor2, b2); //xor & b
+			b2 = _mm256_andnot_si256 (temp2, b2); //(xor & b) & (~temp)
+			res2 = _mm256_or_si256 (res2, b2); // res |= ^
+			
+			//compute temp
+			a2 = _mm256_and_si256 (a2, xor2);
+			temp2 = _mm256_or_si256 (temp2, a2);
+			
+			load_idx += 8;
+			
+		}
+		
+		//printf("reach here");
+		// read results out 
+		uint64_t cres[4];
+		//memcpy(cres, &res1, sizeof(cres));
+		_mm256_store_pd(cres,(__m256d) res1); // need storeu so it doesn't crash (investigate?)
+		
+		uint64_t cres0 = cres[0];
+		uint64_t cres1 = cres[1];
+		uint64_t cres2 = cres[2];
+		uint64_t cres3 = cres[3];
+		/*
+		if(i == 0){
+			printf("c0, c1, c2, c3 (in order): \n");
+			PRINT_64_B(cres[0]);
+			LINE;
+			PRINT_64_B(cres[1]);
+			LINE;
+			PRINT_64_B(cres[2]);
+			LINE;
+			PRINT_64_B(cres[3]);
+			LINE;
+		}
+		*/
+		
+		// maybe only do this if there are > 1 samples per block? maybe > x  until its worth it?
+		int ri0 = res_idx;
+		int ri1 = res_idx + samples_per_block;
+		int ri2 = res_idx + 2 * samples_per_block;
+		int ri3 = res_idx + 3 * samples_per_block;
+		int ri4 = res_idx + 4 * samples_per_block; // hopefully this is precomputed
+		for(int m = 0; m < samples_per_block; m++){
+			// first 64 bit block
+			results[ri0] = cres0 & 1;
+			cres0 = cres0 >> num_features;
+			
+			// second 64 bit block
+			results[ri1] = cres1 & 1;
+			cres1 = cres1 >> num_features;
+			
+			//third
+			results[ri2] = cres2 & 1;
+			cres2 = cres2 >> num_features;
+			
+			
+			//fourth
+			results[ri3] = cres3 & 1;
+			cres3 = cres3 >> num_features;
+			
+			ri0++;
+			ri1++;
+			ri2++;
+			ri3++;
+		}
+		
+		// NOW SAME THING BUT FOR res2 !
+		
+		// read results out 
+		uint64_t cres_2[4];
+		_mm256_store_pd(cres_2,(__m256d) res2);
+		//memcpy(cres_2, &res2, sizeof(cres_2));
+		uint64_t cres02 = cres_2[0];
+		uint64_t cres12 = cres_2[1];
+		uint64_t cres22 = cres_2[2];
+		uint64_t cres32 = cres_2[3];
+		
+		int ri5 = ri4 + samples_per_block;
+		int ri6 = ri4 + 2 * samples_per_block;
+		int ri7 = ri4 + 3 * samples_per_block;
+		for(int m = 0; m < samples_per_block; m++){
+			// first 64 bit block
+			results[ri4] = cres02 & 1;
+			cres02 = cres02 >> num_features;
+			
+			// second 64 bit block
+			results[ri5] = cres12 & 1;
+			cres12 = cres12 >> num_features;
+			
+			//third
+			results[ri6] = cres22 & 1;
+			cres22 = cres22 >> num_features;
+			
+			
+			//fourth
+			results[ri7] = cres32 & 1;
+			cres32 = cres32 >> num_features;
+			//printf("SAMPLE NR: %i \n", i * samples_per_cl + (4 + 3) * samples_per_block + m);
+			ri4++;
+			ri5++;
+			ri6++;
+			ri7++;
+		}
+		
+		res_idx += samples_per_cl;
+		
+		// reset temp and res
+		res1 = _mm256_setzero_si256();
+		res2 = _mm256_setzero_si256();
+		
+		temp1 = _mm256_setzero_si256();
+		temp2 = _mm256_setzero_si256();
+	}
+}
+
+// skip computations if all 0 loads
+// check if extra if etc is faster or slower!
+// (obviously depends on input)
+// SPECIALIZE VIA SPECIFIC MASKS!
+// AND (latency 1) with all zero but 1 at relevant positions (i.e. all the features)
+// if all features == 0 => skip
+// one extra step but might be worth? have to compare..
+// MORE WORTH FOR MORE FEATURES PER SAMPLE! (if 4 features, we have so many samples per CL it seems unlikely we will get to skip often enough to make it worth the extra checks)
+void q1_vector_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+
+	__m256i a1;
+	__m256i b1;
+	__m256i xor1;
+	__m256i a2;
+	__m256i b2;
+	__m256i xor2;
+	
+	__m256i res1 = _mm256_setzero_si256();
+	__m256i res2 = _mm256_setzero_si256();
+	
+	__m256i temp1 = _mm256_setzero_si256();
+	__m256i temp2 = _mm256_setzero_si256();
+	
+	__m256i zeros = _mm256_setzero_si256();
+	
+	int samples_per_block = 64 / num_features;
+	int samples_per_cl = samples_per_block * 8;
+   	int num_cl = ceil(((float)num_samples) / samples_per_cl);
+	
+	uint64_t * d = data;
+	int load_idx = 0;
+	int res_idx = 0;
+	
+	// 5 registers: a, b, xor, res, temp
+	// 10 registers when unrolled twice
+	// independant: a, b, xor
+	// dependant: res, temp
+	
+	// if we unroll j, we can compute all a, b, xor, and then aggregate
+	// all use the same ports anyway so is there any benifit?
+	// maybe we can load the next while computing the last at least
+	
+	// POSSIBLE OPTIMIZATION? compare with all 0 -> if all 0 then skip to next j (continue;)
+	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
+			
+			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
+			// load correct vectors
+			a1 = (__m256i) _mm256_load_pd(d + load_idx);
+			a2 = (__m256i) _mm256_load_ps(d + load_idx + 4); // + 4 as 4 64 bit words per vector
+			
+			//check if all zeros 
+			__m256i test1 = _mm256_cmpeq_epi64(a1, zeros);
+			__m256i test2 = _mm256_cmpeq_epi64(a2, zeros);
+			int tout1 = _mm256_movemask_epi8 (test1);
+			int tout2 = _mm256_movemask_epi8 (test2);
+			
+			if(tout1 == -1 && tout2 == -1){ //need -1 check so all "8bit" ints are all 1's 
+				load_idx += 8;
+				continue;
+			}
+			
+			// shift right by one 
+			b1 = _mm256_srli_epi64(a1, 1);
+			//xor 
+			xor1 = _mm256_xor_si256(a1, b1);
+			
+			//compute res
+			b1 = _mm256_and_si256 (xor1, b1); //xor & b 
+			b1 = _mm256_andnot_si256 (temp1, b1); //(xor & b) & (~temp) 
+			res1 = _mm256_or_si256 (res1, b1); // res |= ^ 
+			
+			//compute temp
+			a1 = _mm256_and_si256 (a1, xor1); 
+			temp1 = _mm256_or_si256 (temp1, a1); 
+			
+			//now for second vector of the cache line			
+			
+			// shift right by one
+			b2 = _mm256_srli_epi64(a2, 1);
+			//xor 
+			xor2 = _mm256_xor_si256(a2, b2);
+			
+			//compute res
+			b2 = _mm256_and_si256 (xor2, b2); //xor & b
+			b2 = _mm256_andnot_si256 (temp2, b2); //(xor & b) & (~temp)
+			res2 = _mm256_or_si256 (res2, b2); // res |= ^
+			
+			//compute temp
+			a2 = _mm256_and_si256 (a2, xor2);
+			temp2 = _mm256_or_si256 (temp2, a2);
+			
+			load_idx += 8;
+			
+		}
+		
+		//printf("reach here");
+		// read results out 
+		uint64_t cres[4];
+		//memcpy(cres, &res1, sizeof(cres));
+		_mm256_store_pd(cres,(__m256d) res1); // need storeu so it doesn't crash (investigate?)
+		
+		uint64_t cres0 = cres[0];
+		uint64_t cres1 = cres[1];
+		uint64_t cres2 = cres[2];
+		uint64_t cres3 = cres[3];
+		
+		// maybe only do this if there are > 1 samples per block? maybe > x  until its worth it?
+		int ri0 = res_idx;
+		int ri1 = res_idx + samples_per_block;
+		int ri2 = res_idx + 2 * samples_per_block;
+		int ri3 = res_idx + 3 * samples_per_block;
+		int ri4 = res_idx + 4 * samples_per_block; // hopefully this is precomputed
+		for(int m = 0; m < samples_per_block; m++){
+			// first 64 bit block
+			results[ri0] = cres0 & 1;
+			cres0 = cres0 >> num_features;
+			
+			// second 64 bit block
+			results[ri1] = cres1 & 1;
+			cres1 = cres1 >> num_features;
+			
+			//third
+			results[ri2] = cres2 & 1;
+			cres2 = cres2 >> num_features;
+			
+			
+			//fourth
+			results[ri3] = cres3 & 1;
+			cres3 = cres3 >> num_features;
+			
+			ri0++;
+			ri1++;
+			ri2++;
+			ri3++;
+		}
+		
+		// NOW SAME THING BUT FOR res2 !
+		
+		// read results out 
+		uint64_t cres_2[4];
+		_mm256_store_pd(cres_2,(__m256d) res2);
+		//memcpy(cres_2, &res2, sizeof(cres_2));
+		uint64_t cres02 = cres_2[0];
+		uint64_t cres12 = cres_2[1];
+		uint64_t cres22 = cres_2[2];
+		uint64_t cres32 = cres_2[3];
+		
+		int ri5 = ri4 + samples_per_block;
+		int ri6 = ri4 + 2 * samples_per_block;
+		int ri7 = ri4 + 3 * samples_per_block;
+		for(int m = 0; m < samples_per_block; m++){
+			// first 64 bit block
+			results[ri4] = cres02 & 1;
+			cres02 = cres02 >> num_features;
+			
+			// second 64 bit block
+			results[ri5] = cres12 & 1;
+			cres12 = cres12 >> num_features;
+			
+			//third
+			results[ri6] = cres22 & 1;
+			cres22 = cres22 >> num_features;
+			
+			
+			//fourth
+			results[ri7] = cres32 & 1;
+			cres32 = cres32 >> num_features;
+			
+			ri4++;
+			ri5++;
+			ri6++;
+			ri7++;
+		}
+		
+		res_idx += samples_per_cl;
+		
+		// reset temp and res
+		res1 = _mm256_setzero_si256();
+		res2 = _mm256_setzero_si256();
+		
+		temp1 = _mm256_setzero_si256();
+		temp2 = _mm256_setzero_si256();
+	}
+}
+
+// BIT MASKS to check for all 0 feature values
+// for some reason this needs storeu while the others work with store? something about the stack i imagine
+void q1_vector_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+
+	__m256i a1;
+	__m256i b1;
+	__m256i xor1;
+	__m256i a2;
+	__m256i b2;
+	__m256i xor2;
+	
+	__m256i res1 = _mm256_setzero_si256();
+	__m256i res2 = _mm256_setzero_si256();
+	
+	__m256i temp1 = _mm256_setzero_si256();
+	__m256i temp2 = _mm256_setzero_si256();
+	
+	__m256i zeros = _mm256_setzero_si256();
+	
+	int samples_per_block = 64 / num_features;
+	int samples_per_cl = samples_per_block * 8;
+   	int num_cl = ceil(((float)num_samples) / samples_per_cl);
+	
+	uint64_t * d = data;
+	int load_idx = 0;
+	int res_idx = 0;
+	
+	/*
+	Construct bit masks!
+	Always 2 neighbouring bits are relevant
+	0,1 -> nfeatures, nfeatures+1 etc
+	*/
+	__m256i feature_mask;
+	switch(num_features){
+		case 2:
+			feature_mask = _mm256_set1_epi64x(0xFFFFFFFFFFFFFFFF); break; // really this case should call v3
+		case 4:
+			feature_mask = _mm256_set1_epi64x(0x3333333333333333); break; //001100110011..0011 pattern
+		case 8:
+			feature_mask = _mm256_set1_epi64x(0x0303030303030303); break; //0000001100000011 pattern
+		case 16:
+			feature_mask = _mm256_set1_epi64x(0x0003000300030003); break; // 14 0s 2 1s pattern
+		case 32:
+			feature_mask = _mm256_set1_epi64x(0x0000000300000003); break; // 30 0s, 2 1s
+		case 64:
+			feature_mask = _mm256_set1_epi64x(0x0000000000000003); break; // 30 0s, 2 1s
+		default:
+			printf("unexpected nr of features, returning \n");
+			return;
+	}
+	
+	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
+			
+			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
+			// load correct vectors
+			a1 = (__m256i) _mm256_load_pd(d + load_idx);
+			a2 = (__m256i) _mm256_load_ps(d + load_idx + 4); // + 4 as 4 64 bit words per vector
+			
+			
+			__m256i test1 = _mm256_and_si256 (a1, feature_mask);
+			test1 = _mm256_cmpeq_epi64(test1, zeros);
+			__m256i test2 = _mm256_and_si256 (a2, feature_mask);
+			test2 = _mm256_cmpeq_epi64(a2, zeros);
+			
+			
+			int tout1 = _mm256_movemask_epi8 (test1);
+			int tout2 = _mm256_movemask_epi8 (test2);
+			
+			
+			if(tout1 == -1 && tout2 == -1){ //need -1 check so all "8bit" ints are all 1's 
+				load_idx += 8;
+				continue;
+			}
+			
+			// shift right by one // SHIFTS IN 0s, so if all 0 just more 0
+			b1 = _mm256_srli_epi64(a1, 1);
+			//xor
+			xor1 = _mm256_xor_si256(a1, b1);
+			
+			//compute res
+			b1 = _mm256_and_si256 (xor1, b1); //xor & b 
+			b1 = _mm256_andnot_si256 (temp1, b1); //(xor & b) & (~temp) 
+			res1 = _mm256_or_si256 (res1, b1); // res |= ^ 
+			
+			//compute temp
+			a1 = _mm256_and_si256 (a1, xor1);
+			temp1 = _mm256_or_si256 (temp1, a1); 
+			
+			//now for second vector of the cache line			
+			
+			// shift right by one
+			b2 = _mm256_srli_epi64(a2, 1);
+			//xor 
+			xor2 = _mm256_xor_si256(a2, b2);
+			
+			//compute res
+			b2 = _mm256_and_si256 (xor2, b2); //xor & b
+			b2 = _mm256_andnot_si256 (temp2, b2); //(xor & b) & (~temp)
+			res2 = _mm256_or_si256 (res2, b2); // res |= ^
+			
+			//compute temp
+			a2 = _mm256_and_si256 (a2, xor2);
+			temp2 = _mm256_or_si256 (temp2, a2);
+			
+			load_idx += 8;
+			
+		}
+		
+		//printf("reach here");
+		// read results out 
+		uint64_t cres[4];
+		//memcpy(cres, &res1, sizeof(cres));
+		_mm256_storeu_pd(cres,(__m256d) res1); // need storeu so it doesn't crash (investigate?)
+		
+		uint64_t cres0 = cres[0];
+		uint64_t cres1 = cres[1];
+		uint64_t cres2 = cres[2];
+		uint64_t cres3 = cres[3];
+		
+		// maybe only do this if there are > 1 samples per block? maybe > x  until its worth it?
+		int ri0 = res_idx;
+		int ri1 = res_idx + samples_per_block;
+		int ri2 = res_idx + 2 * samples_per_block;
+		int ri3 = res_idx + 3 * samples_per_block;
+		int ri4 = res_idx + 4 * samples_per_block; // hopefully this is precomputed
+		for(int m = 0; m < samples_per_block; m++){
+			// first 64 bit block
+			results[ri0] = cres0 & 1;
+			cres0 = cres0 >> num_features;
+			
+			// second 64 bit block
+			results[ri1] = cres1 & 1;
+			cres1 = cres1 >> num_features;
+			
+			//third
+			results[ri2] = cres2 & 1;
+			cres2 = cres2 >> num_features;
+			
+			
+			//fourth
+			results[ri3] = cres3 & 1;
+			cres3 = cres3 >> num_features;
+			
+			ri0++;
+			ri1++;
+			ri2++;
+			ri3++;
+		}
+		
+		// NOW SAME THING BUT FOR res2 !
+		
+		// read results out 
+		uint64_t cres_2[4];
+		_mm256_storeu_pd(cres_2,(__m256d) res2);
+		//memcpy(cres_2, &res2, sizeof(cres_2));
+		uint64_t cres02 = cres_2[0];
+		uint64_t cres12 = cres_2[1];
+		uint64_t cres22 = cres_2[2];
+		uint64_t cres32 = cres_2[3];
+		
+		int ri5 = ri4 + samples_per_block;
+		int ri6 = ri4 + 2 * samples_per_block;
+		int ri7 = ri4 + 3 * samples_per_block;
+		for(int m = 0; m < samples_per_block; m++){
+			// first 64 bit block
+			results[ri4] = cres02 & 1;
+			cres02 = cres02 >> num_features;
+			
+			// second 64 bit block
+			results[ri5] = cres12 & 1;
+			cres12 = cres12 >> num_features;
+			
+			//third
+			results[ri6] = cres22 & 1;
+			cres22 = cres22 >> num_features;
+			
+			
+			//fourth
+			results[ri7] = cres32 & 1;
+			cres32 = cres32 >> num_features;
+			
+			ri4++;
+			ri5++;
+			ri6++;
+			ri7++;
+		}
+		
+		res_idx += samples_per_cl;
+		
+		// reset temp and res
+		res1 = _mm256_setzero_si256();
+		res2 = _mm256_setzero_si256();
+		
+		temp1 = _mm256_setzero_si256();
+		temp2 = _mm256_setzero_si256();
+	}
+}
+
+// unroll the loop !
+void q1_vector_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+
+	__m256i a1;
+	__m256i b1;
+	__m256i xor1;
+	__m256i a2;
+	__m256i b2;
+	__m256i xor2;
+	__m256i a3;
+	__m256i b3;
+	__m256i xor3;
+	__m256i a4;
+	__m256i b4;
+	__m256i xor4;
+	
+	__m256i res1 = _mm256_setzero_si256();
+	__m256i res2 = _mm256_setzero_si256();
+	
+	
+	__m256i temp1 = _mm256_setzero_si256();
+	__m256i temp2 = _mm256_setzero_si256();
+	
+	__m256i zeros = _mm256_setzero_si256();
+	
+	int samples_per_block = 64 / num_features;
+	int samples_per_cl = samples_per_block * 8;
+   	int num_cl = ceil(((float)num_samples) / samples_per_cl);
+	
+	uint64_t * d = data;
+	int load_idx = 0;
+	int res_idx = 0;
+	
+	/*
+	Construct bit masks!
+	Always 2 neighbouring bits are relevant
+	0,1 -> nfeatures, nfeatures+1 etc
+	*/
+	__m256i feature_mask;
+	switch(num_features){
+		case 2:
+			feature_mask = _mm256_set1_epi64x(0xFFFFFFFFFFFFFFFF); break; // really this case should call v3
+		case 4:
+			feature_mask = _mm256_set1_epi64x(0x3333333333333333); break; //001100110011..0011 pattern
+		case 8:
+			feature_mask = _mm256_set1_epi64x(0x0303030303030303); break; //0000001100000011 pattern
+		case 16:
+			feature_mask = _mm256_set1_epi64x(0x0003000300030003); break; // 14 0s 2 1s pattern
+		case 32:
+			feature_mask = _mm256_set1_epi64x(0x0000000300000003); break; // 30 0s, 2 1s
+		case 64:
+			feature_mask = _mm256_set1_epi64x(0x0000000000000003); break; // 30 0s, 2 1s
+		default:
+			printf("unexpected nr of features, returning \n");
+			return;
+	}
+	
+	// unroll just by 1 extra to see if there is any speedup before comitting to more unrolls
+	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		for(int j = 0; j < 32; j += 2){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
+			
+			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
+			// load correct vectors
+			a1 = (__m256i) _mm256_load_pd(d + load_idx);
+			a2 = (__m256i) _mm256_load_ps(d + load_idx + 4); // + 4 as 4 64 bit words per vector
+			a3 = (__m256i) _mm256_load_ps(d + load_idx + 8); // a3 and a1 go together, a2 and a4
+			a4 = (__m256i) _mm256_load_ps(d + load_idx + 12);
+			
+			__m256i test1 = _mm256_and_si256 (a1, feature_mask);
+			test1 = _mm256_cmpeq_epi64(test1, zeros);
+			__m256i test2 = _mm256_and_si256 (a2, feature_mask);
+			test2 = _mm256_cmpeq_epi64(a2, zeros);
+			
+			
+			int tout1 = _mm256_movemask_epi8 (test1);
+			int tout2 = _mm256_movemask_epi8 (test2);
+			
+			__m256i test3 = _mm256_and_si256 (a3, feature_mask);
+			test3 = _mm256_cmpeq_epi64(test3, zeros);
+			__m256i test4 = _mm256_and_si256 (a4, feature_mask);
+			test4 = _mm256_cmpeq_epi64(a4, zeros);
+			
+			
+			int tout3 = _mm256_movemask_epi8 (test3);
+			int tout4 = _mm256_movemask_epi8 (test4);
+			
+			// another option would be to split tout for each vector (256 bits) into a separate if statement (needs testing to see if it speeds up the average case!)
+			
+			// 10 variables in here (10 registers)
+			if(tout1 != -1 || tout2 != -1){ //need -1 check so all "8bit" ints are all 1's 
+				// shift right by one // SHIFTS IN 0s, so if all 0 just more 0
+				b1 = _mm256_srli_epi64(a1, 1);
+				//xor 
+				xor1 = _mm256_xor_si256(a1, b1);
+				
+				//compute res
+				b1 = _mm256_and_si256 (xor1, b1); //xor & b 
+				b1 = _mm256_andnot_si256 (temp1, b1); //(xor & b) & (~temp) 
+				res1 = _mm256_or_si256 (res1, b1); // res |= ^ 
+				
+				//compute temp
+				a1 = _mm256_and_si256 (a1, xor1); 
+				temp1 = _mm256_or_si256 (temp1, a1);
+				
+				//now for second vector of the cache line			
+				
+				// shift right by one
+				b2 = _mm256_srli_epi64(a2, 1);
+				//xor 
+				xor2 = _mm256_xor_si256(a2, b2);
+				
+				//compute res
+				b2 = _mm256_and_si256 (xor2, b2); //xor & b
+				b2 = _mm256_andnot_si256 (temp2, b2); //(xor & b) & (~temp)
+				res2 = _mm256_or_si256 (res2, b2); // res |= ^
+				
+				//compute temp
+				a2 = _mm256_and_si256 (a2, xor2);
+				temp2 = _mm256_or_si256 (temp2, a2);
+			}
+			
+			// 6 new registers -> total 16 == 16 available registers (?) -> also tout though..
+			if(tout3 != -1 || tout4 != -1){
+				// shift right by one // SHIFTS IN 0s, so if all 0 just more 0
+				b3 = _mm256_srli_epi64(a3, 1);
+				//xor // 0 xor 0 == 0
+				xor3 = _mm256_xor_si256(a3, b3);
+				
+				//compute res
+				b3 = _mm256_and_si256 (xor3, b3); //xor & b
+				b3 = _mm256_andnot_si256 (temp1, b3); //(xor & b) & (~temp) 
+				res1 = _mm256_or_si256 (res1, b3); // res |= ^ 
+				
+				//compute temp
+				a3 = _mm256_and_si256 (a3, xor3); 
+				temp1 = _mm256_or_si256 (temp1, a3); 
+				
+				//now for second vector of the cache line			
+				
+				// shift right by one
+				b4 = _mm256_srli_epi64(a4, 1);
+				//xor 
+				xor4 = _mm256_xor_si256(a4, b4);
+				
+				//compute res
+				b4 = _mm256_and_si256 (xor4, b4); //xor & b
+				b4 = _mm256_andnot_si256 (temp2, b4); //(xor & b) & (~temp)
+				res2 = _mm256_or_si256 (res2, b4); // res |= ^
+				
+				//compute temp
+				a4 = _mm256_and_si256 (a4, xor4);
+				temp2 = _mm256_or_si256 (temp2, a4);			
+			}
+			load_idx += 16;
+			
+		}
+		
+		//printf("reach here");
+		// read results out 
+		uint64_t cres[4];
+		//memcpy(cres, &res1, sizeof(cres));
+		_mm256_storeu_pd(cres,(__m256d) res1); // need storeu so it doesn't crash (investigate?)
+		
+		uint64_t cres0 = cres[0];
+		uint64_t cres1 = cres[1];
+		uint64_t cres2 = cres[2];
+		uint64_t cres3 = cres[3];
+		
+		// maybe only do this if there are > 1 samples per block? maybe > x  until its worth it?
+		int ri0 = res_idx;
+		int ri1 = res_idx + samples_per_block;
+		int ri2 = res_idx + 2 * samples_per_block;
+		int ri3 = res_idx + 3 * samples_per_block;
+		int ri4 = res_idx + 4 * samples_per_block; // hopefully this is precomputed
+		for(int m = 0; m < samples_per_block; m++){
+			// first 64 bit block
+			results[ri0] = cres0 & 1;
+			cres0 = cres0 >> num_features;
+			
+			// second 64 bit block
+			results[ri1] = cres1 & 1;
+			cres1 = cres1 >> num_features;
+			
+			//third
+			results[ri2] = cres2 & 1;
+			cres2 = cres2 >> num_features;
+			
+			
+			//fourth
+			results[ri3] = cres3 & 1;
+			cres3 = cres3 >> num_features;
+			
+			ri0++;
+			ri1++;
+			ri2++;
+			ri3++;
+		}
+		
+		// NOW SAME THING BUT FOR res2 !
+		
+		// read results out 
+		uint64_t cres_2[4];
+		_mm256_storeu_pd(cres_2,(__m256d) res2);
+		//memcpy(cres_2, &res2, sizeof(cres_2));
+		uint64_t cres02 = cres_2[0];
+		uint64_t cres12 = cres_2[1];
+		uint64_t cres22 = cres_2[2];
+		uint64_t cres32 = cres_2[3];
+		
+		int ri5 = ri4 + samples_per_block;
+		int ri6 = ri4 + 2 * samples_per_block;
+		int ri7 = ri4 + 3 * samples_per_block;
+		for(int m = 0; m < samples_per_block; m++){
+			// first 64 bit block
+			results[ri4] = cres02 & 1;
+			cres02 = cres02 >> num_features;
+			
+			// second 64 bit block
+			results[ri5] = cres12 & 1;
+			cres12 = cres12 >> num_features;
+			
+			//third
+			results[ri6] = cres22 & 1;
+			cres22 = cres22 >> num_features;
+			
+			
+			//fourth
+			results[ri7] = cres32 & 1;
+			cres32 = cres32 >> num_features;
+			
+			ri4++;
+			ri5++;
+			ri6++;
+			ri7++;
+		}
+		
+		res_idx += samples_per_cl;
 		
 		// reset temp and res
 		res1 = _mm256_setzero_si256();
