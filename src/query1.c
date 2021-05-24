@@ -213,12 +213,12 @@ void q1_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 // possibly unroll to keep all temps and results in local variables ?
 // possible speedup using 64 bit loads instead of 32 ?
 void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
-	
+	/*
 	if(num_features % 4 != 0 || num_features > 32){
 		printf("can't handle num_features: %i! \n", num_features);
 		return;
 	}
-	
+	*/
     int chunk_index;
 	int feature_index;
 
@@ -232,7 +232,7 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 	// word size = 32
 	
 	// case where we have 4 or more samples per word and unroll for the word
-	if(samples_per_word % 4 == 0 && samples_per_word >= 4){
+	if(samples_per_word >= 4){
 	size_t res_idx = 0; // counts for k loop in samples
 	size_t data_index_s = 0; // counts k loop in words
     for(int k = 0; k < num_blocks;k++){
@@ -609,12 +609,12 @@ then can optimize parallel & vector
 NEGLIGIBLE IMPROVEMENT OVER v5, maybe just remove this one
 */
 void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
-	
+	/*
 	if(num_features % 4 != 0 || num_features > 32){
 		printf("can't handle num_features: %i! \n", num_features);
 		return;
 	}
-	
+	*/
     int chunk_index;
 	int feature_index;
 
@@ -632,7 +632,7 @@ void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 	uint64_t* d = data; // use 64 bit words!
 	
 	// case where we have 4 or more samples per word and unroll for the word
-	if(samples_per_word % 4 == 0 && samples_per_word > 4){
+	if(samples_per_word > 4){
 	size_t res_idx = 0; // counts for k loop in samples
 	size_t data_index_s = 0; // counts k loop in words
 	

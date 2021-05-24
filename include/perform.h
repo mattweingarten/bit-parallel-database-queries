@@ -20,6 +20,7 @@
 #define Q2_PATH "./runtimedata/q2/"
 #define Q3_PATH "./runtimedata/q3/"
 void performance_rnd_query(void* query, enum Query type,char * out_file_name);
+void performance_rnd_query_v2(void** queries, enum Query type,char * out_file_name, int n_q_ver);
 
 /// assumes set up data vars
 //void performance_query(void* query, enum Query type);
@@ -34,7 +35,8 @@ void perf_q3_R_rows(char* filename, q3_t q,generator gen,size_t R_row_max, size_
 void perf_q3_rows(char* filename, q3_t q,generator gen,size_t row_max, size_t R_cols,size_t S_cols,size_t step_size);
 double perf_test_q3_blocked(q3b_t q,generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols,size_t block_size);
 
-
+void saveHeaderToFile( char* filename, size_t cols, size_t n_q_ver);
+void saveCycledataToFile_v2( char* filename,size_t cycles, size_t rows, size_t cols, size_t flag);
 
 void perf_q3_compare_block(char * filename, q3b_t q,size_t max_row_size);
 
