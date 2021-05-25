@@ -24,20 +24,23 @@ int main(int argc, char **argv) {
 	// test_integer_vector_division(10000);
 	// test_integer_vector_mod(1000);
 	
-	// validate_query(&q3_vector_v4,Q3);
+	validate_query(&q3_weave_index_vertical_block,Q3);
+
+
 
 
 
 
 	// perf_q3_rows("query_3_before_vector_rand_gen",&q3_weave_index_l1_block,&one_zero_gen,32768,2,16,5120);
 	// perf_q3_rows("query3_v3_rand_rand_gen",&q3_vector_v3,&rand_gen,32768,2,16,5120);
-	// perf_q3_rows("query3_v4_rand_rand_gen",&q3_vector_v4,&rand_gen,32768,2,16,5120);
+	// perf_q3_rows("query3_v5_rand_100_gen",&q3_vector_v5,&rand_gen,32768,2,4,5120);
 
 	
 	bool correct;
+	// correct = test_q3(&q3_weave_index_l1_block,rand_gen,mod_gen,256,4,128,4);
 	
 	// correct = test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,256,4,256,4);
-	correct = test_q3(&q3_vector_v4,rand_gen,rand_gen,256,4,256,4);
+	correct = test_q3(&q3_weave_index_vertical_block,rand_gen,asc_gen,256,4,128,4);
 	printf("Correct: %d\n",correct);
 
 
