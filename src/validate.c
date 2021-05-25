@@ -68,7 +68,7 @@
 void validate_query(void* query, enum Query type){
 
     generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
-    size_t row_sizes[5] = {128,256,512,2048,4096};
+    size_t row_sizes[7] = {128,256,512,2048,4096,65536,131072};
 	size_t cols_sizes[4] = {2,8,16,32};
 	if(type == Q2)
 		cols_sizes[0] = 4;
@@ -79,7 +79,7 @@ void validate_query(void* query, enum Query type){
     size_t count = 0;
     printf("======================== Starting validation ==========================\n\n");
     for(int i = 0; i < 5; i++){
-        for(int j = 0; j < 5; j++){
+        for(int j = 0; j < 7; j++){
             for(int k = 0;k < 4;k++){
 				if(cols_sizes[k] * row_sizes[j] < 512) continue;
                 bool correct;

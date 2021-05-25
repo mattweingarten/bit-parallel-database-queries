@@ -44,6 +44,40 @@ int main(int argc, char **argv) {
 	printf("Correct: %d\n",correct);
 
 
+	//bool correct;
+	
+	// correct = test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,256,4,256,4);
+	//correct = test_q3(&q3_vector_v4,rand_gen,rand_gen,256,4,256,4);
+	//printf("Correct: %d\n",correct);
+	/*
+	performance_rnd_query(&q1_weave, Q1, "weave_v1.csv");
+	performance_rnd_query(&q1_weave_v2, Q1, "weave_v2.csv");
+	performance_rnd_query(&q1_weave_v3, Q1, "weave_v3.csv");
+	performance_rnd_query(&q1_weave_v4, Q1, "weave_v4.csv");
+	performance_rnd_query(&q1_weave_v5, Q1, "weave_v5.csv");
+	performance_rnd_query(&q1_weave_v6, Q1, "weave_v6.csv");
+	//add 64 features for these ones
+	
+	performance_rnd_query(&q1_parallel_weave, Q1, "parallel_weave_v1.csv");
+	performance_rnd_query(&q1_parallel_weave_v2, Q1, "parallel_weave_v2.csv");
+	performance_rnd_query(&q1_vector_weave, Q1, "vector_weave_v1.csv");
+	performance_rnd_query(&q1_vector_weave_v2, Q1, "vector_weave_v2.csv");
+	performance_rnd_query(&q1_vector_weave_v3, Q1, "vector_weave_v3.csv");
+	performance_rnd_query(&q1_vector_weave_v3_1, Q1, "vector_weave_v3_1.csv");
+	performance_rnd_query(&q1_vector_weave_v4, Q1, "vector_weave_v4.csv");
+	performance_rnd_query(&q1_vector_weave_v4_1, Q1, "vector_weave_v4_1.csv");
+	performance_rnd_query(&q1_vector_weave_v5, Q1, "vector_weave_v5.csv");
+	performance_rnd_query(&q1_vector_weave_v6, Q1, "vector_weave_v6.csv");
+	performance_rnd_query(&q1_vector_weave_v64, Q1, "vector_weave_v64.csv");
+	*/
+	
+	// void (*queries[6])() = {&q1_weave, &q1_weave_v2, &q1_weave_v3, &q1_weave_v4, &q1_weave_v5, &q1_weave_v6};
+	
+	// performance_rnd_query_v2(queries, Q1, "testout.csv", 6);
+	
+	//void (*queries[2])() = {&q1_weave, &q1_weave_v2};
+	
+	//performance_rnd_query_v2(queries, Q1, "testout.csv", 2);
 	// correct = test_q3(&q3_vector_v3,mod_gen,mod_gen,1024,2,1024,4);
 	// printf("Correct: %d\n",correct);
 	

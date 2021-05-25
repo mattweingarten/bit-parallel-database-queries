@@ -20,7 +20,7 @@
 void performance_rnd_query(void* query, enum Query type,char * out_file_name){
     generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
     size_t row_sizes[5] = {128,256,512,2048,32768};
-    size_t cols_sizes[4] = {4,8,16,32};
+    size_t cols_sizes[5] = {2,4,8,16,32};
     //bool correct;
 	double cycles;
 	int cyc;
@@ -29,8 +29,9 @@ void performance_rnd_query(void* query, enum Query type,char * out_file_name){
 		
     printf("======================== Starting Performance Test on Random Data ======================\n\n");
     for(int i = 0; i < 5; i++){
-        for(int j = 0; j < 5; j++){
-            for(int k = 0;k < 4;k++){
+        for(int k = 0; k < 5; k++){
+            for(int j = 0;j < 5;j++){
+				if(cols_sizes[k] * row_sizes[j] < 512) continue;
                 bool correct;
                 switch (type)
                 {
@@ -39,7 +40,7 @@ void performance_rnd_query(void* query, enum Query type,char * out_file_name){
 					cyc = cycles;
 					if(PRINT_CYCLES)
 						printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d\n",cyc, type + 1,row_sizes[j],cols_sizes[k],i);
-					saveCycledataToFile("./q1_cycles.csv",cycles,row_sizes[j],cols_sizes[k],i);
+					saveCycledataToFile(out_file_name,cycles,row_sizes[j],cols_sizes[k],i);
                     break;
                 case Q2:
 					cycles = perf_test_q2((q2_t) query ,generators[i],row_sizes[j],cols_sizes[k]);
@@ -56,6 +57,47 @@ void performance_rnd_query(void* query, enum Query type,char * out_file_name){
                     printf("Invalid query type!\n");
                     break;
                 }
+            }
+        }
+    }
+    printf("\n\n======================== Performance Test completed ==========================\n");
+}
+
+void performance_rnd_query_v2(void** queries, enum Query type,char * out_file_name, int n_q_ver){
+    generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
+    size_t row_sizes[7] = {128,256,512,2048,32768,65536,131072};
+    size_t cols_sizes[5] = {2,4,8,16,32};
+    //bool correct;
+	double cycles;
+	int cyc;
+    size_t count_correct = 0;
+    size_t count = 0;
+		
+    printf("======================== Starting Performance Test on Random Data ======================\n\n");
+    for(int i = 0; i < 1; i++){
+        for(int k = 0; k < 5; k++){
+			saveHeaderToFile(out_file_name, cols_sizes[k], n_q_ver);
+            for(int j = 0;j < 7;j++){
+				if(cols_sizes[k] * row_sizes[j] < 512) continue;
+				saveCycledataToFile_v2(out_file_name,0,row_sizes[j],cols_sizes[k], 0);
+				for(int m = 0; m < n_q_ver; m++){
+					bool correct;
+					switch (type)
+					{
+					case Q1:
+						cycles = perf_test_q1((q1_t) queries[m] ,generators[i],row_sizes[j],cols_sizes[k]);
+						cyc = cycles;
+						if(PRINT_CYCLES)
+							printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d\n",cyc, type + 1,row_sizes[j],cols_sizes[k],i);
+						saveCycledataToFile_v2(out_file_name,cycles,row_sizes[j],cols_sizes[k], 1);
+						break;
+
+					default:
+						printf("Invalid query type!\n");
+						break;
+					}
+				}
+				saveCycledataToFile_v2(out_file_name,0,0,0, 2);
             }
         }
     }
@@ -91,9 +133,11 @@ double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
 		}
 		
 		if(correct)
-			printf("Warmup correct: TRUE \n");
-		else
-			printf("Warmup correct: FALSE \n");
+			printf(GRN "Warmup correct: TRUE \n" RESET);
+		else{
+			printf(RED "Warmup correct: FALSE \n" RESET);
+			exit(1);
+		}
 		//calculation
 
 		start = start_tsc();
@@ -357,6 +401,41 @@ void saveCycledataToFile( char* filename,size_t cycles, size_t rows, size_t cols
    fclose(fptr);
 }
 
+void saveHeaderToFile( char* filename, size_t cols, size_t n_q_ver){
+
+   FILE *fptr;
+   fptr = fopen(filename,"a");
+   if(fptr == NULL)
+   {
+      printf("ERROR: cannot write to file!\n");   
+   }
+   fprintf(fptr,"%zu",cols);
+   for(int i = 0; i < n_q_ver; i++){
+	   fprintf(fptr,",%zu", i + 1);
+   }
+	fprintf(fptr," \n");
+   fclose(fptr);
+}
+
+
+void saveCycledataToFile_v2( char* filename,size_t cycles, size_t rows, size_t cols, size_t flag){
+
+   FILE *fptr;
+   fptr = fopen(filename,"a");
+   if(fptr == NULL)
+   {
+      printf("ERROR: cannot write to file!\n");
+	  return;
+   }
+   if(flag == 0){
+	   fprintf(fptr, "%zu", rows);
+   } else if (flag == 1) {
+	   fprintf(fptr,",%zu",cycles);
+   } else if (flag == 2) {
+	   fprintf(fptr, "\n");
+   }
+   fclose(fptr);
+}
 
 
 void saveCycledataToFile_v1( char* filename,double cycles, size_t rows, size_t R_cols, size_t S_cols){
