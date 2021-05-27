@@ -363,16 +363,35 @@ void test_fast_recon(size_t rows,size_t cols, generator gen){
 	// HLINE;
 
 	// PRINT_MALLOC_H(db,rows * cols);
-	// PRINT_MALLOC(ml,rows,cols);
-	HLINE;
+	// PRINT_MALLOC(db,rows,cols);
+	// HLINE;
 
 
-	
+	fast_recon(ml,res,rows,cols);
+	// PRINT_MALLOC(res,rows,1);
 	// __m256i x = 
 	// PRINT_32_BIT_VECTOR(x);
 	
-	PRINT_WEAVED(ml,rows,cols);
-	fast_recon(ml,res,rows,cols);
+	// PRINT_WEAVED(ml,rows,cols);
+	uint64_t start,end;
+	start = start_tsc();
+	for(int i = 0; i < 1000;++i){
+		// fast_recon_v2(ml,res,rows,cols);
+		fast_recon(ml,res,rows,cols);
+	}
+	end = stop_tsc(start);
+
+
+
+	// start = start_tsc();
+	// for(int i = 0; i < 1000;++i){
+	// 	// fast_recon_v2(ml,res,rows,cols);
+	// 	fast_recon(ml,res,rows,cols);
+	// }
+	// end = stop_tsc(start);
+	// double cycles = ((double) end ) / 1000;
+	// printf("Cycles : %lf\n",cycles);
+	
 	// bool correct = compare(res,db,)
 	// free(db);
 	// free(ml);
@@ -386,26 +405,85 @@ void fast_recon(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
 	size_t wordsize= 32;
 	size_t cl_size = 16;
 	size_t smpls_per_entry = 32 / cols;
-	size_t _1bit_index = src;
-	size_t _2bit_index = src + 16 * 8;
-	size_t _3bit_index = src + 16 * 16;
-	size_t _4bit_Index = src + 16 * 24;
+	uint32_t * _1bit_index = src;
+	uint32_t * _2bit_index = src + cl_size * 8;
+	uint32_t * _3bit_index = src + cl_size * 16;
+	uint32_t * _4bit_Index = src + cl_size * 24;
 	// PRINT_WEAVED(src,rows,cols);
-	__m256i x_07,x_815,x_1623,x2432;
-	// for(size_t  i = 0; i < cl_size;++i){
+	__m256i mask = _mm256_set1_epi32(1);
+	__m256i x_07,x_815,x_1623,x_2432,x_07_v2,x_815_v2,x_1623_v2,x_2432_v2;
+	__m256i shift_index_07 = _mm256_set_epi32(0,1,2,3,4,5,6,7);
+	__m256i shift_index_815 = _mm256_set_epi32(8,9,10,11,12,13,14,15);
+	__m256i shift_index_1623 = _mm256_set_epi32(16,17,18,19,20,21,22,23);
+	__m256i shift_index_2432 = _mm256_set_epi32(24,25,26,27,28,29,30,31);
 	__m256i index = _mm256_setr_epi32(0,16,32,48,64,80,96,112);
-	x_07 = _mm256_i32gather_epi32(_1bit_index,index,4);
-	x_815 = _mm256_i32gather_epi32(_2bit_index,index,4);
-	x_1623 = _mm256_i32gather_epi32(_3bit_index,index,4);
-	x2432 = _mm256_i32gather_epi32(_4bit_Index,index,4);
-	// PRINT_32_BIT_VECTOR(x_07);
-	// PRINT_32_BIT_VECTOR(x_815);
-	// PRINT_32_BIT_VECTOR(x_1623);
-	// PRINT_32_BIT_VECTOR(x2432);
-	// }
+	size_t dest_index = 0;
+	for(size_t  j = 0; j < cl_size;++j){
+		x_07 = _mm256_i32gather_epi32(_1bit_index,index,4);
+		x_815 = _mm256_i32gather_epi32(_2bit_index,index,4);
+		x_1623 = _mm256_i32gather_epi32(_3bit_index,index,4);
+		x_2432 = _mm256_i32gather_epi32(_4bit_Index,index,4);
+		for(size_t k = 0; k < 32;k+=cols){
 
+			x_07_v2 = _mm256_srli_epi32(x_07, k );
+			x_815_v2 = _mm256_srli_epi32(x_815, k );
+			x_1623_v2 = _mm256_srli_epi32(x_1623_v2, k );
+			x_2432_v2 = _mm256_srli_epi32(x_2432, k );
 
+			x_07_v2 = _mm256_and_si256(x_07_v2,mask);
+			x_815_v2 = _mm256_and_si256(x_815_v2,mask);
+			x_1623_v2 = _mm256_and_si256(x_1623_v2,mask);
+			x_2432_v2 = _mm256_and_si256(x_2432_v2,mask);
+
+			x_07_v2 = _mm256_sllv_epi32(x_07_v2,shift_index_2432);
+			x_815_v2 = _mm256_sllv_epi32(x_815,shift_index_1623);
+			x_1623_v2 = _mm256_sllv_epi32(x_1623_v2,shift_index_815);
+			x_2432_v2 = _mm256_sllv_epi32(x_2432_v2,shift_index_07);
+
+			__m256i x_0_15 = _mm256_or_si256  (x_07_v2,x_815_v2);
+			__m256i x_16_32 = _mm256_or_si256  (x_1623_v2,x_2432_v2);
+			__m256i x_all = _mm256_or_si256  (x_0_15,x_16_32);
+			uint32_t* ptr = (uint32_t*) &x_all;
+			uint32_t res = 0;
+			for(size_t m = 0;m < 8;++m){
+				res += ptr[m];
+			}
+
+			dest[dest_index] = res;
+			dest_index++;
+			
+
+		}
+		_1bit_index++;
+		_2bit_index++;
+		_3bit_index++;
+		_4bit_Index++;
+	}
 }
+
+	void fast_recon_v2(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
+		size_t wordsize= 32;
+		size_t cl_size = 16;
+		size_t smpls_per_entry = 32 / cols;
+		size_t R_buffer_size = smpls_per_entry * cl_size;
+
+		// for(size_t i = 0; i < R_num_cl_blocks; ++i){
+		// start1 = start_tsc();
+		// memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
+		for(size_t k  = 0; k < wordsize;++k){
+			for(size_t m = 0; m < cl_size; ++m){
+				uint32_t next_word = src[k * cl_size + m];
+				
+				for (size_t n = 0; n < smpls_per_entry;++n){
+					uint32_t k_th_bit_R_a = (next_word >> (n * cols)) & 1;
+					uint32_t res = (k_th_bit_R_a << (wordsize - k - 1));
+					// R_a_buffer[m * R_samples_per_entry + n] += (k_th_bit_R_a << (wordsize - k - 1));
+				}
+			}
+		}
+
+	}
+
 
 
 void perf_mod(size_t N){

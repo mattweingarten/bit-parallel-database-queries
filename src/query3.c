@@ -233,7 +233,9 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 	// int64_t start1,end1;
 	// int64_t start2,end2;
 	// int64_t start3,end3;
-
+	uint64_t start,end;
+	double cycles = 0;
+	int msr_count =  0;
 
 	size_t dest_index = 0;
 
@@ -271,8 +273,11 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 		}
 
 		// end1 = stop_tsc(start1);
+
+		
 		for(size_t j = 0; j < S_num_cl_blocks;++j){
-			
+
+			start = start_tsc();
 
 			// start2 = start_tsc();
 			memset(S_b_buffer,0,S_smpls_per_cl_block * 4);
@@ -296,6 +301,12 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 				}
 				
 			}
+
+			end = stop_tsc( start);
+			cycles += (double) end;
+
+			msr_count++;
+
 			
 
 			// end2 = stop_tsc(start2);
@@ -325,6 +336,7 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 	free(S_b_buffer);
 	free(S_c_buffer);
 	*dest_rows = dest_index;
+	printf("Cycles : %lf\n",cycles/msr_count);
 }
 
 
@@ -2030,9 +2042,16 @@ void q3_weave_index_vertical_block_v2(uint32_t *dR, uint32_t *dS, uint32_t * des
 	// size_t S_vert_block_index = 0;
 	// size_t S_next_cl_index = 0;
 	size_t S_next_block_index = 0;
+
+	
 	for(size_t j = 0; j < S_num_cl_blocks;++j){
 		size_t S_next_v_block_index = 0;
+		int64_t start,end;
+
+		start = start_tsc();
+
 		for(size_t v_b_j = 0; v_b_j < S_n_vertical_blocks;v_b_j++){
+			
 			size_t S_next_cl_index = S_next_block_index; 
 			memset(S_b_buffer,0,S_smpls_per_vert_block * 4);
 			memset(S_c_buffer,0,S_smpls_per_vert_block * 4);
@@ -2061,6 +2080,11 @@ void q3_weave_index_vertical_block_v2(uint32_t *dR, uint32_t *dS, uint32_t * des
 				S_next_cl_index += cl_size;
 				word_shift_index--;
 			} //end wordsize k 
+
+			end = stop_tsc(start);
+			cycles += (double) end;
+			msr_count++;
+
 			S_next_v_block_index += S_vert_block_size;
 			// PRINT_MALLOC_H(S_b_buffer,R_smpls_per_vert_block);LINE;
 		
@@ -2091,9 +2115,9 @@ void q3_weave_index_vertical_block_v2(uint32_t *dR, uint32_t *dS, uint32_t * des
 					}//end wordsize k
 					R_next_v_block_index += R_vert_block_size;
 
-					int64_t start,end;
+					// int64_t start,end;
 
-					start = start_tsc();
+					// start = start_tsc();
 
 					for(size_t k = 0; k < R_smpls_per_vert_block; ++k){
 						for(size_t l = 0; l < S_smpls_per_vert_block; ++l){
@@ -2104,9 +2128,9 @@ void q3_weave_index_vertical_block_v2(uint32_t *dR, uint32_t *dS, uint32_t * des
 							}		 
 						}
 					}
-					end = stop_tsc(start);
-					cycles += (double) end;
-					msr_count++;
+					// end = stop_tsc(start);
+					// cycles += (double) end;
+					// msr_count++;
 
 
 
@@ -2175,6 +2199,9 @@ void q3_weave_index_vertical_block_v3(uint32_t *dR, uint32_t *dS, uint32_t * des
 	__m256i S_b_vector;
 	__m256i S_c_vector;
 	size_t S_next_block_index = 0;
+	int64_t start,end;
+
+	start = start_tsc();
 	for(size_t j = 0; j < S_num_cl_blocks;++j){
 		size_t S_next_v_block_index = 0;
 		for(size_t v_b_j = 0; v_b_j < S_n_vertical_blocks;v_b_j++){
@@ -2223,7 +2250,10 @@ void q3_weave_index_vertical_block_v3(uint32_t *dR, uint32_t *dS, uint32_t * des
 				word_shift_index--;
 			} //end wordsize k 
 			S_next_v_block_index += S_vert_block_size;
-			
+			end = stop_tsc( start);
+			cycles += (double) end;
+
+			msr_count++;
 
 			// PRINT_MALLOC(S_b_buffer,R_smpls_per_vert_block,1);LINE;HLINE;
 		
@@ -2277,10 +2307,10 @@ void q3_weave_index_vertical_block_v3(uint32_t *dR, uint32_t *dS, uint32_t * des
 						}
 					}
 
-					end = stop_tsc( start);
-					cycles += (double) end;
+					// end = stop_tsc( start);
+					// cycles += (double) end;
 
-					msr_count++;
+					// msr_count++;
 				}//end all vertical blocks R
 				R_next_block_index += cl_block_size;
 			}//end cl_block R
@@ -2302,6 +2332,92 @@ void q3_weave_index_vertical_block_v3(uint32_t *dR, uint32_t *dS, uint32_t * des
 
 
 
+
+void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
+	size_t cl_block_size = wordsize * cl_size;
+	
+	size_t R_num_cl_blocks = (R_rows * R_cols) / cl_block_size;  
+	size_t R_smpls_per_cl_block = cl_block_size / R_cols;
+	size_t R_samples_per_entry = 32 / R_cols;
+	size_t R_samples_per_cl = cl_size * R_samples_per_entry;
+
+	size_t S_num_cl_blocks = (S_rows * S_cols) / cl_block_size;
+	size_t S_smpls_per_cl_block = cl_block_size / S_cols;
+	size_t S_samples_per_entry = 32 / S_cols;
+	size_t S_samples_per_cl = cl_size * S_samples_per_entry;
+	
+
+	uint32_t * R_a_buffer = (uint32_t *) aligned_alloc(32,R_smpls_per_cl_block * sizeof(uint32_t));
+	uint32_t * S_b_buffer = (uint32_t *) aligned_alloc(32,S_smpls_per_cl_block * sizeof(uint32_t));
+	
+	uint32_t * S_c_buffer = (uint32_t *) aligned_alloc(32,S_smpls_per_cl_block * sizeof(uint32_t));
+
+	struct modular_operation* mod_ops  = (struct modular_operation*) aligned_alloc(32,S_smpls_per_cl_block * sizeof(struct modular_operation));
+
+
+
+
+
+	for(size_t i = 0; i < S_num_cl_blocks;++i){
+		uint32_t * _1bit_index = dS + i * cl_block_size;
+		uint32_t * _2bit_index = dS + i * cl_block_size+  cl_size * 8;
+		uint32_t * _3bit_index = dS + i * cl_block_size + cl_size * 16;
+		uint32_t * _4bit_Index = dS + i * cl_block_size + cl_size * 24;
+		__m256i mask = _mm256_set1_epi32(1);
+		__m256i x_07,x_815,x_1623,x_2432,x_07_v2,x_815_v2,x_1623_v2,x_2432_v2;
+		__m256i shift_index_07 = _mm256_set_epi32(0,1,2,3,4,5,6,7);
+		__m256i shift_index_815 = _mm256_set_epi32(8,9,10,11,12,13,14,15);
+		__m256i shift_index_1623 = _mm256_set_epi32(16,17,18,19,20,21,22,23);
+		__m256i shift_index_2432 = _mm256_set_epi32(24,25,26,27,28,29,30,31);
+		__m256i index = _mm256_setr_epi32(0,16,32,48,64,80,96,112);
+		size_t dest_index = 0;
+		for(size_t  j = 0; j < cl_size;++j){
+
+			x_07 = _mm256_i32gather_epi32(_1bit_index,index,4);
+			x_815 = _mm256_i32gather_epi32(_2bit_index,index,4);
+			x_1623 = _mm256_i32gather_epi32(_3bit_index,index,4);
+			x_2432 = _mm256_i32gather_epi32(_4bit_Index,index,4);
+			for(size_t k = 0; k < 32;k+=S_cols){
+
+				x_07_v2 = _mm256_srli_epi32(x_07, k );
+				x_815_v2 = _mm256_srli_epi32(x_815, k );
+				x_1623_v2 = _mm256_srli_epi32(x_1623_v2, k );
+				x_2432_v2 = _mm256_srli_epi32(x_2432, k );
+
+				x_07_v2 = _mm256_and_si256(x_07_v2,mask);
+				x_815_v2 = _mm256_and_si256(x_815_v2,mask);
+				x_1623_v2 = _mm256_and_si256(x_1623_v2,mask);
+				x_2432_v2 = _mm256_and_si256(x_2432_v2,mask);
+
+				x_07_v2 = _mm256_sllv_epi32(x_07_v2,shift_index_2432);
+				x_815_v2 = _mm256_sllv_epi32(x_815,shift_index_1623);
+				x_1623_v2 = _mm256_sllv_epi32(x_1623_v2,shift_index_815);
+				x_2432_v2 = _mm256_sllv_epi32(x_2432_v2,shift_index_07);
+
+
+				__m256i x_0_15 = _mm256_or_si256  (x_07_v2,x_815_v2);
+				__m256i x_16_32 = _mm256_or_si256  (x_1623_v2,x_2432_v2);
+				__m256i x_all = _mm256_or_si256  (x_0_15,x_16_32);
+
+				uint32_t* ptr = (uint32_t*) &x_all;
+				uint32_t res = 0;
+				for(size_t m = 0;m < 8;++m){
+					res += ptr[m];
+				}
+
+				S_b_buffer[dest_index] = res;
+				S_c_buffer[dest_index] = res;
+				dest_index++;
+			}
+			_1bit_index++;
+			_2bit_index++;
+			_3bit_index++;
+			_4bit_Index++;
+
+		PRINT_MALLOC(S_b_buffer,S_smpls_per_cl_block,1);
+	}
+
+}
 
 
 
