@@ -233,9 +233,9 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 	// int64_t start1,end1;
 	// int64_t start2,end2;
 	// int64_t start3,end3;
-	uint64_t start,end;
-	double cycles = 0;
-	int msr_count =  0;
+	// uint64_t start,end;
+	// double cycles = 0;
+	// int msr_count =  0;
 
 	size_t dest_index = 0;
 
@@ -277,7 +277,7 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 		
 		for(size_t j = 0; j < S_num_cl_blocks;++j){
 
-			start = start_tsc();
+			// start = start_tsc();
 
 			// start2 = start_tsc();
 			memset(S_b_buffer,0,S_smpls_per_cl_block * 4);
@@ -302,10 +302,10 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 				
 			}
 
-			end = stop_tsc( start);
-			cycles += (double) end;
+			// end = stop_tsc( start);
+			// cycles += (double) end;
 
-			msr_count++;
+			// msr_count++;
 
 			
 
@@ -336,7 +336,7 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 	free(S_b_buffer);
 	free(S_c_buffer);
 	*dest_rows = dest_index;
-	printf("Cycles : %lf\n",cycles/msr_count);
+	// printf("Cycles : %lf\n",cycles/msr_count);
 }
 
 

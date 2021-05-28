@@ -354,6 +354,37 @@ void base_line_integer_mod(uint32_t * x,uint32_t d,  uint32_t * dest,size_t N){
 }
 
 
+void fast_recon_perf(void){
+	uint64_t start,end;
+	size_t cols[5] = {2,4,8,16,32};
+	for (int j = 0; j < 5; ++j){
+		size_t row = 512 / cols[j];
+		// HLINE;
+		// printf("%d,\n",cols[j]);
+		// printf("%d,%d\n",row,cols[j]);
+		uint32_t* db = generateDB(row,cols[j],rand_gen);
+		uint32_t * ml = weave_samples_wrapper(db,row,cols[j]);
+		uint32_t * res = (uint32_t * ) malloc(512 * sizeof(uint32_t));
+		start = start_tsc();
+		for(int i = 0; i < 1000;++i){
+			fast_recon_v3(ml,res,row,cols[j]);
+		}
+		end = stop_tsc(start);
+
+		start = start_tsc();
+		for(int i = 0; i < 10000;++i){
+			fast_recon_v3(ml,res,row,cols[j]);
+		}
+		end = stop_tsc(start);
+		double cycles = ((double) end ) / 10000;
+		printf("%lf,%u\n",cycles,cols[j]);
+		free(db);
+		free(ml);
+		free(res);
+	}
+}
+
+
 void test_fast_recon(size_t rows,size_t cols, generator gen){
 	assert(rows * cols  == 512 && "just testing 1");
 	uint32_t * db = generateDB(rows,cols,gen);
@@ -363,12 +394,12 @@ void test_fast_recon(size_t rows,size_t cols, generator gen){
 	// HLINE;
 
 	// PRINT_MALLOC_H(db,rows * cols);
-	PRINT_MALLOC(db,rows,cols);
-	HLINE;
+	// PRINT_MALLOC(db,rows,cols);
+	// HLINE;
 
 
-	fast_recon(ml,res,rows,cols);
-	HLINE;
+	// fast_recon(ml,res,rows,cols);
+	// HLINE;
 	// PRINT_MALLOC(res,rows,1);
 	// __m256i x = 
 	// PRINT_32_BIT_VECTOR(x);
@@ -465,7 +496,7 @@ void fast_recon(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
 			for(size_t m = 0;m < 8;++m){
 				res += ptr[m];
 			}
-			printf("res : %u\n",res);
+			// printf("res : %u\n",res);
 
 			dest[dest_index] = res;
 			dest_index++;
@@ -495,12 +526,59 @@ void fast_recon(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
 				for (size_t n = 0; n < smpls_per_entry;++n){
 					uint32_t k_th_bit_R_a = (next_word >> (n * cols)) & 1;
 					uint32_t res = (k_th_bit_R_a << (wordsize - k - 1));
+					dest[m * smpls_per_entry + n] += res;
 					// R_a_buffer[m * R_samples_per_entry + n] += (k_th_bit_R_a << (wordsize - k - 1));
 				}
 			}
 		}
 
 	}
+
+
+void fast_recon_v3(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
+	size_t wordsize= 32;
+	size_t cl_size = 16;
+	size_t smpls_per_entry = 32 / cols;
+	size_t R_buffer_size = smpls_per_entry * cl_size;
+
+	// for(size_t i = 0; i < R_num_cl_blocks; ++i){
+	// start1 = start_tsc();
+	// memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
+	// for(size_t k  = 0; k < wordsize;++k){
+	// 	for(size_t m = 0; m < cl_size; ++m){
+	// 		uint32_t next_word = src[k * cl_size + m];
+			
+	// 		for (size_t n = 0; n < smpls_per_entry;++n){
+	// 			uint32_t k_th_bit_R_a = (next_word >> (n * cols)) & 1;
+	// 			uint32_t res = (k_th_bit_R_a << (wordsize - k - 1));
+	// 			dest[m * smpls_per_entry + n] += res;
+	// 			// R_a_buffer[m * R_samples_per_entry + n] += (k_th_bit_R_a << (wordsize - k - 1));
+	// 		}
+	// 	}
+	// }
+	__m256i R_a_vector;
+	__m256i next_word;
+
+	for(size_t k  = 0; k < wordsize;++k){
+		uint32_t word_shift_index = wordsize - k - 1;
+		for(size_t m = 0; m < cl_size; m+= 8){ 
+			next_word = _mm256_loadu_si256(src + k * cl_size + m);
+			for (size_t n = 0; n < smpls_per_entry;++n){
+				uint32_t n_shift_index = n * cols;
+				__m256i k_th_bit_R_a = _mm256_srli_epi32(next_word,n_shift_index);
+				k_th_bit_R_a = _mm256_and_si256(k_th_bit_R_a,_mm256_set_epi32(1,1,1,1,1,1,1,1)); 
+				k_th_bit_R_a = _mm256_slli_epi32(k_th_bit_R_a,word_shift_index);
+				R_a_vector = _mm256_loadu_si256(src + n * cl_size + m);
+				R_a_vector = _mm256_add_epi32(R_a_vector,k_th_bit_R_a);
+				_mm256_storeu_si256(dest + n * cl_size + m,R_a_vector);
+			}
+		}
+	}
+
+
+
+}
+
 
 
 
