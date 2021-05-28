@@ -12,8 +12,8 @@
 
 
 // typedef uint32_t (*generator) (size_t,size_t); 
-#define N_PERF_ITERATION 10000
-#define N_WARMUP 100
+#define N_PERF_ITERATION 10
+#define N_WARMUP 1
 #define PRINT_CYCLES 1
 
 #define Q1_PATH "./runtimedata/q1/"

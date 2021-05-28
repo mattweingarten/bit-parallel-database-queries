@@ -2530,16 +2530,20 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 				_3bit_index++;
 				_4bit_Index++;
 			}
-			// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
+			
+			// PRINT_MALLOC_H(S_b_buffer,S_smpls_per_cl_block);LINE;
+			// PRINT_MALLOC_H(R_a_buffer,R_smpls_per_cl_block);LINE;
+			// PRINT_MALLOC_H(S_c_buffer,S_smpls_per_cl_block);LINE;
 
 			for(size_t l = 0; l < S_smpls_per_cl_block;++l){
 				struct modular_operation mod_l = mod_ops[l];
 				uint32_t s_b = S_b_buffer[l];
 				uint32_t s_c = S_c_buffer[l];
-
+				if(s_b == 0 ){continue;}
 				__m256i m_v = _mm256_set1_epi32(mod_l.m);
 				__m256i d_v = _mm256_set1_epi32(s_b);
 				__m256i s_c_v = _mm256_set1_epi32(s_c);
+				
 
 
 				for(size_t k = 0; k < R_smpls_per_cl_block; k+= 8){
@@ -2561,8 +2565,8 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 					for(size_t h = 0; h < 8; ++h){
 						if(eq_vector[h] == 4294967295L){
 	
-							dest[2 * dest_index] = p * cl_block_size + k + h;
-							dest[2 * dest_index + 1] = i * cl_block_size + l;
+							dest[2 * dest_index] = p * R_smpls_per_cl_block + k + h;
+							dest[2 * dest_index + 1] = i * S_smpls_per_cl_block + l;
 							dest_index++;
 						}
 					}
