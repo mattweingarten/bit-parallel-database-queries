@@ -363,23 +363,24 @@ void test_fast_recon(size_t rows,size_t cols, generator gen){
 	// HLINE;
 
 	// PRINT_MALLOC_H(db,rows * cols);
-	// PRINT_MALLOC(db,rows,cols);
-	// HLINE;
+	PRINT_MALLOC(db,rows,cols);
+	HLINE;
 
 
 	fast_recon(ml,res,rows,cols);
+	HLINE;
 	// PRINT_MALLOC(res,rows,1);
 	// __m256i x = 
 	// PRINT_32_BIT_VECTOR(x);
 	
 	// PRINT_WEAVED(ml,rows,cols);
-	uint64_t start,end;
-	start = start_tsc();
-	for(int i = 0; i < 1000;++i){
-		// fast_recon_v2(ml,res,rows,cols);
-		fast_recon(ml,res,rows,cols);
-	}
-	end = stop_tsc(start);
+	// uint64_t start,end;
+	// start = start_tsc();
+	// for(int i = 0; i < 1000;++i){
+	// 	// fast_recon_v2(ml,res,rows,cols);
+	// 	fast_recon(ml,res,rows,cols);
+	// }
+	// end = stop_tsc(start);
 
 
 
@@ -427,19 +428,35 @@ void fast_recon(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
 
 			x_07_v2 = _mm256_srli_epi32(x_07, k );
 			x_815_v2 = _mm256_srli_epi32(x_815, k );
-			x_1623_v2 = _mm256_srli_epi32(x_1623_v2, k );
+			x_1623_v2 = _mm256_srli_epi32(x_1623, k );
 			x_2432_v2 = _mm256_srli_epi32(x_2432, k );
+		
+	
 
 			x_07_v2 = _mm256_and_si256(x_07_v2,mask);
 			x_815_v2 = _mm256_and_si256(x_815_v2,mask);
 			x_1623_v2 = _mm256_and_si256(x_1623_v2,mask);
 			x_2432_v2 = _mm256_and_si256(x_2432_v2,mask);
 
+			// SLINE;
+			// // printf("og: %u\n",src[])
+			// PRINT_32_BIT_VECTOR(x_07_v2);		
+			// PRINT_32_BIT_VECTOR(x_815_v2);			
+			// PRINT_32_BIT_VECTOR(x_1623_v2);			
+			// PRINT_32_BIT_VECTOR(x_2432_v2);	
+
 			x_07_v2 = _mm256_sllv_epi32(x_07_v2,shift_index_2432);
-			x_815_v2 = _mm256_sllv_epi32(x_815,shift_index_1623);
+			x_815_v2 = _mm256_sllv_epi32(x_815_v2,shift_index_1623);
 			x_1623_v2 = _mm256_sllv_epi32(x_1623_v2,shift_index_815);
 			x_2432_v2 = _mm256_sllv_epi32(x_2432_v2,shift_index_07);
-
+			
+			// SLINE;
+			// // printf("og: %u\n",src[])
+			// PRINT_32_BIT_VECTOR(x_07_v2);		
+			// PRINT_32_BIT_VECTOR(x_815_v2);			
+			// PRINT_32_BIT_VECTOR(x_1623_v2);			
+			// PRINT_32_BIT_VECTOR(x_2432_v2);			
+			// _mm256_or_epi32
 			__m256i x_0_15 = _mm256_or_si256  (x_07_v2,x_815_v2);
 			__m256i x_16_32 = _mm256_or_si256  (x_1623_v2,x_2432_v2);
 			__m256i x_all = _mm256_or_si256  (x_0_15,x_16_32);
@@ -448,6 +465,7 @@ void fast_recon(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
 			for(size_t m = 0;m < 8;++m){
 				res += ptr[m];
 			}
+			printf("res : %u\n",res);
 
 			dest[dest_index] = res;
 			dest_index++;

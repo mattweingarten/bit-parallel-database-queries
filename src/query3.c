@@ -2378,11 +2378,11 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 			x_1623 = _mm256_i32gather_epi32(_3bit_index,index,4);
 			x_2432 = _mm256_i32gather_epi32(_4bit_Index,index,4);
 			for(size_t k = 0; k < 32;k+=S_cols){
-
-				x_07_v2 = _mm256_srli_epi32(x_07, k );
-				x_815_v2 = _mm256_srli_epi32(x_815, k );
-				x_1623_v2 = _mm256_srli_epi32(x_1623_v2, k );
-				x_2432_v2 = _mm256_srli_epi32(x_2432, k );
+				// printf("%d\n",k);
+				x_07_v2 = _mm256_srli_epi32(x_07, k + 1 );
+				x_815_v2 = _mm256_srli_epi32(x_815, k + 1);
+				x_1623_v2 = _mm256_srli_epi32(x_1623, k  + 1);
+				x_2432_v2 = _mm256_srli_epi32(x_2432, k  + 1);
 
 				x_07_v2 = _mm256_and_si256(x_07_v2,mask);
 				x_815_v2 = _mm256_and_si256(x_815_v2,mask);
@@ -2390,7 +2390,7 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 				x_2432_v2 = _mm256_and_si256(x_2432_v2,mask);
 
 				x_07_v2 = _mm256_sllv_epi32(x_07_v2,shift_index_2432);
-				x_815_v2 = _mm256_sllv_epi32(x_815,shift_index_1623);
+				x_815_v2 = _mm256_sllv_epi32(x_815_v2,shift_index_1623);
 				x_1623_v2 = _mm256_sllv_epi32(x_1623_v2,shift_index_815);
 				x_2432_v2 = _mm256_sllv_epi32(x_2432_v2,shift_index_07);
 
@@ -2414,6 +2414,7 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 			_3bit_index++;
 			_4bit_Index++;
 
+		}
 		PRINT_MALLOC(S_b_buffer,S_smpls_per_cl_block,1);
 	}
 
