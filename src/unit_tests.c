@@ -3,10 +3,13 @@
 #include <stdint.h> 
 #include <immintrin.h>
 #include <x86intrin.h>
+// #include "../include/tsc_x86.h"
 #include "../include/generator.h"
 #include "../include/unit_tests.h"
+#include "../include/validate.h"
 #include "../include/debug.h"
-
+#include "../include/converter.h"
+#include "../include/perform.h"
 #define min(a, b) (((a) < (b)) ? (a) : (b))
 
 uint32_t lt(uint32_t x, uint32_t y){
@@ -252,16 +255,19 @@ void test_integer_vector_mod(size_t N){
 	uint32_t* input1 = aligned_alloc(64,N * sizeof(uint32_t));
 	uint32_t* dest = aligned_alloc(64,N * sizeof(uint32_t));
 	for(size_t i = 0;i < N;++i ){
-		input1[i] = rand_gen(0,0);
+		input1[i] = rand_100_gen(0,0);
+		// input1[i] = rang_gen(0,0);
 	}
 
 
 	bool overall_correct = true;
 	bool correct;
 	for(size_t k = 0; k < N; ++k){
-		uint32_t divisor = rand_gen(0,0) + 2; //divisior > 1
+		// uint32_t divisor = rand_gen(0,0) + 2; //divisior > 1
+		uint32_t divisor = rand_100_gen(0,0) + 2; //divisior > 1
 		// fast_integer_division(input1,divisor,dest,N);
-		fast_integer_mod(input1,divisor,dest,N);
+		// fast_integer_mod(input1,divisor,dest,N);
+		fast_integer_mod2(input1,divisor,dest,N);
 		for(size_t i = 0;i < N;++i ){
 			correct = input1[i] % divisor == dest[i];
 			if(!correct){
@@ -310,18 +316,382 @@ void fast_integer_mod(uint32_t * x,uint32_t d,  uint32_t * dest,size_t N){
 		res = _mm256_srli_epi32(res,1);
 		res = _mm256_add_epi32(res,t);
 		res = _mm256_srli_epi32(res,sh2);
-		// HLINE;
-		// PRINT_32_BIT_VECTOR(res);
-		// PRINT_32_BIT_VECTOR(d_v);
 		res = _mm256_mullo_epi32(res,d_v);
-		// PRINT_32_BIT_VECTOR(res);
 		res = _mm256_sub_epi32(x_v,res);
-		// PRINT_32_BIT_VECTOR(res);
-		// return;
 		_mm256_storeu_si256(dest + i,res);
 
 	}
 
 
 }
+void fast_integer_mod2(uint32_t * x,uint32_t d,  uint32_t * dest,size_t N){
 
+
+	__m256i d_v = _mm256_set1_epi32(d);
+	__m256 d_v_f = _mm256_cvtepi32_ps(d_v);
+	for(size_t i = 0; i < N ; i+= 8){
+		__m256i x_v =  _mm256_loadu_si256(x + i);
+		__m256 x_v_f = _mm256_cvtepi32_ps(x_v);
+		__m256 division = _mm256_div_ps(x_v_f,d_v_f);
+		__m256 rounded = _mm256_floor_ps(division);
+		__m256 remainder = _mm256_sub_ps(division,rounded);
+		__m256 result = _mm256_mul_ps(remainder,d_v_f);
+		__m256i res_uint = _mm256_cvtps_epi32(result);
+		_mm256_storeu_si256(dest + i,res_uint);
+	}
+
+
+
+}
+
+
+
+
+void base_line_integer_mod(uint32_t * x,uint32_t d,  uint32_t * dest,size_t N){
+	for(size_t i = 0; i < N;++i){
+		dest[i] = x[i] % d;
+	}
+}
+
+
+void fast_recon_perf(void){
+	uint64_t start,end;
+	size_t cols[5] = {2,4,8,16,32};
+	for (int j = 0; j < 5; ++j){
+		size_t row = 512 / cols[j];
+		// HLINE;
+		// printf("%d,\n",cols[j]);
+		// printf("%d,%d\n",row,cols[j]);
+		uint32_t* db = generateDB(row,cols[j],rand_gen);
+		uint32_t * ml = weave_samples_wrapper(db,row,cols[j]);
+		uint32_t * res = (uint32_t * ) malloc(512 * sizeof(uint32_t));
+		start = start_tsc();
+		for(int i = 0; i < 1000;++i){
+			fast_recon_v3(ml,res,row,cols[j]);
+		}
+		end = stop_tsc(start);
+
+		start = start_tsc();
+		for(int i = 0; i < 10000;++i){
+			fast_recon_v3(ml,res,row,cols[j]);
+		}
+		end = stop_tsc(start);
+		double cycles = ((double) end ) / 10000;
+		printf("%lf,%u\n",cycles,cols[j]);
+		free(db);
+		free(ml);
+		free(res);
+	}
+}
+
+
+void test_fast_recon(size_t rows,size_t cols, generator gen){
+	assert(rows * cols  == 512 && "just testing 1");
+	uint32_t * db = generateDB(rows,cols,gen);
+	uint32_t * ml = weave_samples_wrapper(db,rows,cols);
+	uint32_t * res = (uint32_t * ) malloc(512 * sizeof(uint32_t));
+	// PRINT_MALLOC(db,rows,cols);
+	// HLINE;
+
+	// PRINT_MALLOC_H(db,rows * cols);
+	// PRINT_MALLOC(db,rows,cols);
+	// HLINE;
+
+
+	// fast_recon(ml,res,rows,cols);
+	// HLINE;
+	// PRINT_MALLOC(res,rows,1);
+	// __m256i x = 
+	// PRINT_32_BIT_VECTOR(x);
+	
+	// PRINT_WEAVED(ml,rows,cols);
+	// uint64_t start,end;
+	// start = start_tsc();
+	// for(int i = 0; i < 1000;++i){
+	// 	// fast_recon_v2(ml,res,rows,cols);
+	// 	fast_recon(ml,res,rows,cols);
+	// }
+	// end = stop_tsc(start);
+
+
+
+	// start = start_tsc();
+	// for(int i = 0; i < 1000;++i){
+	// 	// fast_recon_v2(ml,res,rows,cols);
+	// 	fast_recon(ml,res,rows,cols);
+	// }
+	// end = stop_tsc(start);
+	// double cycles = ((double) end ) / 1000;
+	// printf("Cycles : %lf\n",cycles);
+	
+	// bool correct = compare(res,db,)
+	// free(db);
+	// free(ml);
+	// free(res);
+
+}
+
+
+
+void fast_recon(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
+	size_t wordsize= 32;
+	size_t cl_size = 16;
+	size_t smpls_per_entry = 32 / cols;
+	uint32_t * _1bit_index = src;
+	uint32_t * _2bit_index = src + cl_size * 8;
+	uint32_t * _3bit_index = src + cl_size * 16;
+	uint32_t * _4bit_Index = src + cl_size * 24;
+	// PRINT_WEAVED(src,rows,cols);
+	__m256i mask = _mm256_set1_epi32(1);
+	__m256i x_07,x_815,x_1623,x_2432,x_07_v2,x_815_v2,x_1623_v2,x_2432_v2;
+	__m256i shift_index_07 = _mm256_set_epi32(0,1,2,3,4,5,6,7);
+	__m256i shift_index_815 = _mm256_set_epi32(8,9,10,11,12,13,14,15);
+	__m256i shift_index_1623 = _mm256_set_epi32(16,17,18,19,20,21,22,23);
+	__m256i shift_index_2432 = _mm256_set_epi32(24,25,26,27,28,29,30,31);
+	__m256i index = _mm256_setr_epi32(0,16,32,48,64,80,96,112);
+	size_t dest_index = 0;
+	for(size_t  j = 0; j < cl_size;++j){
+		x_07 = _mm256_i32gather_epi32(_1bit_index,index,4);
+		x_815 = _mm256_i32gather_epi32(_2bit_index,index,4);
+		x_1623 = _mm256_i32gather_epi32(_3bit_index,index,4);
+		x_2432 = _mm256_i32gather_epi32(_4bit_Index,index,4);
+		for(size_t k = 0; k < 32;k+=cols){
+
+			x_07_v2 = _mm256_srli_epi32(x_07, k );
+			x_815_v2 = _mm256_srli_epi32(x_815, k );
+			x_1623_v2 = _mm256_srli_epi32(x_1623, k );
+			x_2432_v2 = _mm256_srli_epi32(x_2432, k );
+		
+	
+
+			x_07_v2 = _mm256_and_si256(x_07_v2,mask);
+			x_815_v2 = _mm256_and_si256(x_815_v2,mask);
+			x_1623_v2 = _mm256_and_si256(x_1623_v2,mask);
+			x_2432_v2 = _mm256_and_si256(x_2432_v2,mask);
+
+			// SLINE;
+			// // printf("og: %u\n",src[])
+			// PRINT_32_BIT_VECTOR(x_07_v2);		
+			// PRINT_32_BIT_VECTOR(x_815_v2);			
+			// PRINT_32_BIT_VECTOR(x_1623_v2);			
+			// PRINT_32_BIT_VECTOR(x_2432_v2);	
+
+			x_07_v2 = _mm256_sllv_epi32(x_07_v2,shift_index_2432);
+			x_815_v2 = _mm256_sllv_epi32(x_815_v2,shift_index_1623);
+			x_1623_v2 = _mm256_sllv_epi32(x_1623_v2,shift_index_815);
+			x_2432_v2 = _mm256_sllv_epi32(x_2432_v2,shift_index_07);
+			
+			// SLINE;
+			// // printf("og: %u\n",src[])
+			// PRINT_32_BIT_VECTOR(x_07_v2);		
+			// PRINT_32_BIT_VECTOR(x_815_v2);			
+			// PRINT_32_BIT_VECTOR(x_1623_v2);			
+			// PRINT_32_BIT_VECTOR(x_2432_v2);			
+			// _mm256_or_epi32
+			__m256i x_0_15 = _mm256_or_si256  (x_07_v2,x_815_v2);
+			__m256i x_16_32 = _mm256_or_si256  (x_1623_v2,x_2432_v2);
+			__m256i x_all = _mm256_or_si256  (x_0_15,x_16_32);
+			uint32_t* ptr = (uint32_t*) &x_all;
+			uint32_t res = 0;
+			for(size_t m = 0;m < 8;++m){
+				res += ptr[m];
+			}
+			// printf("res : %u\n",res);
+
+			dest[dest_index] = res;
+			dest_index++;
+			
+
+		}
+		_1bit_index++;
+		_2bit_index++;
+		_3bit_index++;
+		_4bit_Index++;
+	}
+}
+
+	void fast_recon_v2(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
+		size_t wordsize= 32;
+		size_t cl_size = 16;
+		size_t smpls_per_entry = 32 / cols;
+		size_t R_buffer_size = smpls_per_entry * cl_size;
+
+		// for(size_t i = 0; i < R_num_cl_blocks; ++i){
+		// start1 = start_tsc();
+		// memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
+		for(size_t k  = 0; k < wordsize;++k){
+			for(size_t m = 0; m < cl_size; ++m){
+				uint32_t next_word = src[k * cl_size + m];
+				
+				for (size_t n = 0; n < smpls_per_entry;++n){
+					uint32_t k_th_bit_R_a = (next_word >> (n * cols)) & 1;
+					uint32_t res = (k_th_bit_R_a << (wordsize - k - 1));
+					dest[m * smpls_per_entry + n] += res;
+					// R_a_buffer[m * R_samples_per_entry + n] += (k_th_bit_R_a << (wordsize - k - 1));
+				}
+			}
+		}
+
+	}
+
+
+void fast_recon_v3(uint32_t * src, uint32_t *dest,size_t rows, size_t cols){
+	size_t wordsize= 32;
+	size_t cl_size = 16;
+	size_t smpls_per_entry = 32 / cols;
+	size_t R_buffer_size = smpls_per_entry * cl_size;
+
+	// for(size_t i = 0; i < R_num_cl_blocks; ++i){
+	// start1 = start_tsc();
+	// memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
+	// for(size_t k  = 0; k < wordsize;++k){
+	// 	for(size_t m = 0; m < cl_size; ++m){
+	// 		uint32_t next_word = src[k * cl_size + m];
+			
+	// 		for (size_t n = 0; n < smpls_per_entry;++n){
+	// 			uint32_t k_th_bit_R_a = (next_word >> (n * cols)) & 1;
+	// 			uint32_t res = (k_th_bit_R_a << (wordsize - k - 1));
+	// 			dest[m * smpls_per_entry + n] += res;
+	// 			// R_a_buffer[m * R_samples_per_entry + n] += (k_th_bit_R_a << (wordsize - k - 1));
+	// 		}
+	// 	}
+	// }
+	__m256i R_a_vector;
+	__m256i next_word;
+
+	for(size_t k  = 0; k < wordsize;++k){
+		uint32_t word_shift_index = wordsize - k - 1;
+		for(size_t m = 0; m < cl_size; m+= 8){ 
+			next_word = _mm256_loadu_si256(src + k * cl_size + m);
+			for (size_t n = 0; n < smpls_per_entry;++n){
+				uint32_t n_shift_index = n * cols;
+				__m256i k_th_bit_R_a = _mm256_srli_epi32(next_word,n_shift_index);
+				k_th_bit_R_a = _mm256_and_si256(k_th_bit_R_a,_mm256_set_epi32(1,1,1,1,1,1,1,1)); 
+				k_th_bit_R_a = _mm256_slli_epi32(k_th_bit_R_a,word_shift_index);
+				R_a_vector = _mm256_loadu_si256(src + n * cl_size + m);
+				R_a_vector = _mm256_add_epi32(R_a_vector,k_th_bit_R_a);
+				_mm256_storeu_si256(dest + n * cl_size + m,R_a_vector);
+			}
+		}
+	}
+
+
+
+}
+
+
+
+
+void perf_mod(size_t N){
+	assert(N % 8 == 0 && "Require N to be divisible by 8!");
+	uint32_t* input1 = aligned_alloc(64,N * sizeof(uint32_t));
+	uint32_t* dest = aligned_alloc(64,N * sizeof(uint32_t));
+
+	for(size_t i = 0;i < N;++i ){
+		input1[i] = rand_gen(0,0);
+		
+	}
+	uint64_t start,end;
+	start = start_tsc();
+	uint32_t divisor = rand_gen(0,0) + 2;
+	for(size_t i = 0; i < N_WARMUP;++i){
+		fast_integer_mod(input1,divisor,dest,N);
+	}
+
+	start = start_tsc();
+	for(size_t i = 0; i <N_PERF_ITERATION;++i){
+		fast_integer_mod(input1,divisor,dest,N);
+	}
+
+	end = stop_tsc(start);
+	free(input1);
+	free(dest);
+	// uint64_t cycles = end /N_PERF_ITERATION; 
+	uint64_t cycles = end /N_PERF_ITERATION; 
+	printf("%lu,%u\n",cycles,N);
+}
+
+
+
+
+void perf_mod_2(size_t N){
+	assert(N % 8 == 0 && "Require N to be divisible by 8!");
+	uint32_t* input1 = aligned_alloc(64,N * sizeof(uint32_t));
+	uint32_t* dest = aligned_alloc(64,N * sizeof(uint32_t));
+
+	for(size_t i = 0;i < N;++i ){
+		input1[i] = rand_gen(0,0);
+		
+	}
+	uint64_t start,end;
+	start = start_tsc();
+	// uint32_t divisor = 19184124;
+	uint32_t divisor = rand_gen(0,0) + 2;
+	for(size_t i = 0; i < N_WARMUP;++i){
+		base_line_integer_mod(input1,divisor,dest,N);
+		end = stop_tsc( start);
+	}
+
+	start = start_tsc();
+	
+	for(size_t i = 0; i <N_PERF_ITERATION;++i){
+		base_line_integer_mod(input1,divisor,dest,N);
+	}
+	end = stop_tsc(start);
+	// printf("Start: %lu,end:%lu",start,end);
+	free(input1);
+	free(dest);
+	double cycles = ((double)end) / N_PERF_ITERATION; 
+	printf("%lf,%u\n",cycles,N);
+}
+
+
+
+void perf_mod_3(size_t N){
+	assert(N % 8 == 0 && "Require N to be divisible by 8!");
+	uint32_t* input1 = aligned_alloc(64,N * sizeof(uint32_t));
+	uint32_t* dest = aligned_alloc(64,N * sizeof(uint32_t));
+
+	for(size_t i = 0;i < N;++i ){
+		input1[i] = rand_gen(0,0);
+		
+	}
+	uint64_t start,end;
+	start = start_tsc();
+	// uint32_t divisor = 19184124;
+	uint32_t divisor = rand_gen(0,0) + 2;
+	for(size_t i = 0; i < N_WARMUP;++i){
+		fast_integer_mod2(input1,divisor,dest,N);
+		end = stop_tsc( start);
+	}
+
+	start = start_tsc();
+	
+	for(size_t i = 0; i <N_PERF_ITERATION;++i){
+		fast_integer_mod2(input1,divisor,dest,N);
+	}
+	end = stop_tsc(start);
+	// printf("Start: %lu,end:%lu",start,end);
+	free(input1);
+	free(dest);
+	double cycles = ((double)end) / N_PERF_ITERATION; 
+	printf("%lf,%u\n",cycles,N);
+}
+
+
+
+
+void take_perf(size_t maxN,size_t steps){
+	size_t n = maxN/steps;
+	assert((maxN/steps)%8 == 0);
+	for(size_t i = n; i < maxN;i+=n ){
+		perf_mod(i);
+	}
+	for(size_t i = n; i < maxN;i+=n ){
+		perf_mod_2(i);
+	}
+
+	for(size_t i = n; i < maxN;i+=n ){
+		perf_mod_3(i);
+	}
+}

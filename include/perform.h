@@ -12,7 +12,7 @@
 
 
 // typedef uint32_t (*generator) (size_t,size_t); 
-#define N_PERF_ITERATION 2
+#define N_PERF_ITERATION 10
 #define N_WARMUP 1
 #define PRINT_CYCLES 1
 

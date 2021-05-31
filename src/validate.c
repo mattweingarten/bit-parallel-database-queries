@@ -151,6 +151,7 @@ bool test_q3(q3_t q, generator R_gen,generator S_gen,size_t R_rows,size_t R_cols
 
         // PRINT_MALLOC(R,R_rows,R_cols);
         // PRINT_MALLOC(S,S_rows,S_cols);
+
         // // // PRINT_aligned_alloc( 32, R,R_rows,R_cols);
         // HLINE;
 
