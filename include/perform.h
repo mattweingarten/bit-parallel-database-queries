@@ -21,6 +21,7 @@
 #define Q3_PATH "./runtimedata/q3/"
 void performance_rnd_query(void* query, enum Query type,char * out_file_name);
 void performance_rnd_query_v2(void** queries, enum Query type,char * out_file_name, int n_q_ver);
+double profile_q1(q1_t q,generator gen,size_t rows,size_t cols);
 
 /// assumes set up data vars
 //void performance_query(void* query, enum Query type);
