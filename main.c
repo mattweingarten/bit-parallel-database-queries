@@ -23,21 +23,28 @@
 int main(int argc, char **argv) {
 	srand(time(NULL));
 
-	uint32_t * S;
-	uint32_t * R;
 
-	generate_selective_db(1024,4,0.8,&S,&R);
+
+
+	perf_q3_selectiviy("selectiviy_fast_recon_O2",&q3_fast_recon_fast_modulo,8192,4);
+
+	perf_q3_selectiviy("selectiviy_vector_v5_O2",&q3_vector_v5,8192,4);
+
+	// uint32_t * S;
+	// uint32_t * R;
+
+	// generate_selective_db(1024,4,0.8,&S,&R);
 	
 
-	// PRINT_MALLOC(S,1024,4);
-	uint32_t gt_out_size = cart_prod(1024,1024);
-	uint32_t* gt = (uint32_t*) aligned_alloc( 32, gt_out_size * 2 * sizeof(uint32_t));
-	q3_index(R,S,gt,&gt_out_size,1024,4,1024,4);
-	uint32_t* re_gt = realloc(gt,gt_out_size * 2 *  sizeof(uint32_t));
+	// // PRINT_MALLOC(S,1024,4);
+	// uint32_t gt_out_size = cart_prod(1024,1024);
+	// uint32_t* gt = (uint32_t*) aligned_alloc( 32, gt_out_size * 2 * sizeof(uint32_t));
+	// q3_index(R,S,gt,&gt_out_size,1024,4,1024,4);
+	// uint32_t* re_gt = realloc(gt,gt_out_size * 2 *  sizeof(uint32_t));
 	
 
-	printf("%f\n",gt_out_size/((double)cart_prod(1024,1024)));
-	validate_query(&q3_with_prune,Q3);
+	// printf("%f\n",gt_out_size/((double)cart_prod(1024,1024)));
+	// validate_query(&q3_with_prune,Q3);
 	// validate_query(&q3_vector_v5
 	// ,Q3);
 	// test_integer_vector_division(10000);
