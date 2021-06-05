@@ -37,7 +37,7 @@ int main(int argc, char **argv) {
 	
 
 	printf("%f\n",gt_out_size/((double)cart_prod(1024,1024)));
-	// validate_query(&q3_fast_recon_fast_modulo,Q3);
+	validate_query(&q3_with_prune,Q3);
 	// validate_query(&q3_vector_v5
 	// ,Q3);
 	// test_integer_vector_division(10000);
