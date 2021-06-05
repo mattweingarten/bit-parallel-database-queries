@@ -25,7 +25,7 @@ Stored such that we have each sample in its entirety before the next
 //wrapper functions
 uint32_t *weave_samples_wrapper(uint32_t* data,size_t rows,size_t cols){
     size_t numEntries = numberOfEntries(rows,cols);
-    uint32_t * res = (uint32_t* ) aligned_alloc(32,numEntries * sizeof(uint32_t));
+    uint32_t * res = (uint32_t* ) aligned_alloc(64,numEntries * sizeof(uint32_t));
 	weave_samples(res,data,rows,cols);
     return res;
 }

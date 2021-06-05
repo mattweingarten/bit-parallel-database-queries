@@ -65,8 +65,8 @@ void performance_rnd_query(void* query, enum Query type,char * out_file_name){
 
 void performance_rnd_query_v2(void** queries, enum Query type,char * out_file_name, int n_q_ver){
     generator generators[5] = {&rand_gen,&asc_gen,&i_gen,&j_gen,&mod_gen};
-    size_t row_sizes[7] = {128,256,512,2048,32768,65536,131072};
-    size_t cols_sizes[5] = {2,4,8,16,32};
+    size_t row_sizes[14] = {128,256,512,1024,2048,4096,8192,16384,32768,65536,131072,262144,524288,1048576};
+    size_t cols_sizes[2] = {4,32};
     //bool correct;
 	double cycles;
 	int cyc;
@@ -74,10 +74,10 @@ void performance_rnd_query_v2(void** queries, enum Query type,char * out_file_na
     size_t count = 0;
 		
     printf("======================== Starting Performance Test on Random Data ======================\n\n");
-    for(int i = 0; i < 1; i++){
-        for(int k = 0; k < 5; k++){
+    for(int i = 1; i < 2; i++){
+        for(int k = 0; k < 2; k++){
 			saveHeaderToFile(out_file_name, cols_sizes[k], n_q_ver);
-            for(int j = 0;j < 7;j++){
+            for(int j = 0;j < 14;j++){
 				if(cols_sizes[k] * row_sizes[j] < 512) continue;
 				saveCycledataToFile_v2(out_file_name,0,row_sizes[j],cols_sizes[k], 0);
 				for(int m = 0; m < n_q_ver; m++){
@@ -88,7 +88,7 @@ void performance_rnd_query_v2(void** queries, enum Query type,char * out_file_na
 						cycles = perf_test_q1((q1_t) queries[m] ,generators[i],row_sizes[j],cols_sizes[k]);
 						cyc = cycles;
 						if(PRINT_CYCLES)
-							printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d\n",cyc, type + 1,row_sizes[j],cols_sizes[k],i);
+							printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d, version = %d \n",cyc, type + 1,row_sizes[j],cols_sizes[k],i, m);
 						saveCycledataToFile_v2(out_file_name,cycles,row_sizes[j],cols_sizes[k], 1);
 						break;
 
@@ -104,6 +104,72 @@ void performance_rnd_query_v2(void** queries, enum Query type,char * out_file_na
     printf("\n\n======================== Performance Test completed ==========================\n");
 }
 
+
+double profile_q1(q1_t q,generator gen,size_t rows,size_t cols){
+    bool correct = true;
+		uint32_t * db = generateDB(rows,cols,gen);
+		uint32_t * gt = q1_groundtruth(db,rows,cols);
+		uint32_t * ml = weave_samples_wrapper(db,rows,cols);
+		int64_t start,end;
+		int64_t compute_cycles = 0;
+		int64_t result_cycles = 0;
+		double cycles = 0.;
+		double dcompute_cycles = 0.;
+		double dresult_cycles = 0.;
+		uint64_t bytes_total = rows * cols * 4;
+		uint32_t* results = aligned_alloc( 32, rows * sizeof(uint32_t));
+		uint32_t *temps = aligned_alloc( 32, rows * sizeof(uint32_t));
+		for(size_t i = 0 ; i < rows; ++i ){
+				results[i]  = 0;
+				temps[i] = 0;
+		}
+		size_t numEntries = numberOfEntries(rows,cols);
+		
+		/// Warmup
+		
+		start = start_tsc();
+		for(size_t i = 0; i < N_WARMUP || end < 1e8; ++i){
+			
+			
+			q(ml,results,temps,&compute_cycles,&result_cycles,rows,cols,numEntries);
+
+			correct = correct && compare(results,gt,rows);
+			end = stop_tsc( start);
+		}
+		
+		if(correct)
+			printf(GRN "Warmup correct: TRUE \n" RESET);
+		else{
+			printf(RED "Warmup correct: FALSE \n" RESET);
+			exit(1);
+		}
+		//calculation
+		compute_cycles = 0;
+		result_cycles = 0;
+		
+		for(size_t i = 0; i < N_PERF_ITERATION; ++i){
+				q(ml,results,temps,&compute_cycles,&result_cycles,rows,cols,numEntries);
+		}
+		correct = correct && compare(results,gt,rows);
+		if(correct)
+			printf("Run correct: TRUE \n");
+		else
+			printf("Run correct: FALSE \n");
+
+		free(db);
+		free(gt);
+		free(ml);
+		free(results);
+		free(temps);
+		
+		dcompute_cycles = ((double)compute_cycles) / N_PERF_ITERATION;
+		dresult_cycles = ((double)result_cycles) / N_PERF_ITERATION;
+		printf("ROWS: %zu, COLS: %zu \n", rows, cols);
+		printf("  Total: %lf \n  Compute: %lf \n  Result: %lf \n\n", dcompute_cycles + dresult_cycles, dcompute_cycles, dresult_cycles);
+		//printf("BYTES IN DATA: %lu \n", bytes_total);
+    return cycles;
+}
+
 double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
     bool correct = true;
 		uint32_t * db = generateDB(rows,cols,gen);
@@ -111,7 +177,7 @@ double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
 		uint32_t * ml = weave_samples_wrapper(db,rows,cols);
 		int64_t start,end;
 		double cycles = 0.;
-		
+		int64_t empty_cycles = 0;
 		uint32_t* results = aligned_alloc( 32, rows * sizeof(uint32_t));
 		uint32_t *temps = aligned_alloc( 32, rows * sizeof(uint32_t));
 		for(size_t i = 0 ; i < rows; ++i ){
@@ -126,7 +192,7 @@ double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
 		for(size_t i = 0; i < N_WARMUP || end * i < 1e8; ++i){
 			
 			
-			q(ml,results,temps,32,512,rows,cols,numEntries);
+			q(ml,results,temps,&empty_cycles,&empty_cycles,rows,cols,numEntries);
 
 			correct = correct && compare(results,gt,rows);
 			end = stop_tsc( start);
@@ -142,7 +208,7 @@ double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
 
 		start = start_tsc();
 		for(size_t i = 0; i < N_PERF_ITERATION; ++i){
-				q(ml,results,temps,32,512,rows,cols,numEntries);
+				q(ml,results,temps,&empty_cycles,&empty_cycles,rows,cols,numEntries);
 		}
 		end = stop_tsc(start);
 		correct = correct && compare(results,gt,rows);

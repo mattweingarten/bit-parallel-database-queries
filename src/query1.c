@@ -5,8 +5,13 @@
 #include <string.h>
 #include "../include/debug.h"
 #include "../include/query1.h"
+//#include "../include/tsc_x86.h"
 #include <math.h>
 #include <immintrin.h>
+
+#define WORD_SIZE 32
+#define BLOCK_SIZE 512
+
 //Select * FROM R WHERE R.a < R.b
 
 //Straightforward
@@ -21,37 +26,29 @@ void q1(uint32_t * data,uint32_t * dest,int rows,int cols){
     }
 }
 
-
-// void (uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
-
-// }
-
-void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
-	// printf("Got here q1_weave\n");
-	// printf("data=%lx,results=%lx,temps=%lx,wordsize=%d,blocksize=%d,num_fet=%d,num_samples=%d,num_entries=%d\n",data,results,temps,word_size,block_size,num_features,num_samples,number_entries);
+void q1_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples,int num_features ,int number_entries){
+	
     int chunk_index;
 	int feature_index;
 	uint32_t a;
 	uint32_t b;
 	uint32_t xor;
 
-    int samples_per_word = word_size / num_features;
-	int samples_per_block = block_size / num_features;
-    int num_blocks = ceil(number_entries / block_size);
-    int rows_per_block = block_size / word_size;
-    int cols_per_block = word_size;
-	// printf("Got here q1_weave2\n");
-	// printf("Got here q1_weave2\n");
-    // printf("Staring query 1 with:num_blocks=%d,block_size=%d, samples_per_block = %d, samples_per_word = %d,num_features= %d\n",num_blocks,block_size,samples_per_block,samples_per_word,num_features);
+    int samples_per_word = WORD_SIZE / num_features;
+	int samples_per_block = BLOCK_SIZE / num_features;
+    int num_blocks = ceil(number_entries / BLOCK_SIZE);
+    int rows_per_block = BLOCK_SIZE / WORD_SIZE;
+    int cols_per_block = WORD_SIZE;
+
     for(int k = 0; k < num_blocks;k++){
-        for(int j = 0; j < word_size;++j){ 
+        for(int j = 0; j < WORD_SIZE;++j){ 
 			
             for(int i = 0; i < samples_per_block; ++i){ 
                 chunk_index = i / samples_per_word; 
                 feature_index = i % samples_per_word;
 				
-                a = data[k * block_size + rows_per_block * j  + chunk_index] >> (feature_index * num_features) &1;
-                b = data[k * block_size + rows_per_block * j  + chunk_index] >> (feature_index * num_features + 1) &1;
+                a = data[k * BLOCK_SIZE + rows_per_block * j  + chunk_index] >> (feature_index * num_features) &1;
+                b = data[k * BLOCK_SIZE + rows_per_block * j  + chunk_index] >> (feature_index * num_features + 1) &1;
                 xor =  a ^ b;
                 results[k * samples_per_block + i] = results[k * samples_per_block + i] | ((xor & b) & (!temps[k * samples_per_block + i]));
                 temps[k * samples_per_block + i] = temps[k * samples_per_block + i] | (xor & a);
@@ -74,27 +71,27 @@ ASSUME 4 FEATURES PER WORD SO IT ALIGNS NICELY.. otherwise a sample over 31 -> 3
 
 //easier indexing (no modulo / division)
 // data only loaded once per word
-void q1_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
-
+void q1_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples,int num_features ,int number_entries){
+	
     int chunk_index;
 	int feature_index;
 	uint32_t a;
 	uint32_t b;
 	uint32_t xor;
 
-    int samples_per_word = word_size / num_features;
-	int samples_per_block = block_size / num_features;
-	// block_size == 512
-    int num_blocks = ceil(number_entries / block_size);
-    int rows_per_block = block_size / word_size;
+    int samples_per_word = WORD_SIZE / num_features;
+	int samples_per_block = BLOCK_SIZE / num_features;
+	// BLOCK_SIZE == 512
+    int num_blocks = ceil(number_entries / BLOCK_SIZE);
+    int rows_per_block = BLOCK_SIZE / WORD_SIZE;
 	// rows_per_block == 16
-    int cols_per_block = word_size;
+    int cols_per_block = WORD_SIZE;
 	// word size = 32
 
     for(int k = 0; k < num_blocks;k++){
-        for(int j = 0; j < word_size;++j){ 
+        for(int j = 0; j < WORD_SIZE;++j){ 
 			for(int m = 0; m < rows_per_block; m++){
-				uint32_t load = data[k * block_size + rows_per_block * j  + m];
+				uint32_t load = data[k * BLOCK_SIZE + rows_per_block * j  + m];
 				for(int i = 0; i < samples_per_word; i++){
 					a = (load >> (i * num_features)) & 1;
 					b = (load >> (i * num_features + 1)) & 1;
@@ -109,7 +106,7 @@ void q1_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 }
 
 // save redoing a bunch of index computations and simplify the mults to adds
-void q1_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+void q1_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples,int num_features ,int number_entries){
 
     int chunk_index;
 	int feature_index;
@@ -117,20 +114,20 @@ void q1_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 	uint32_t b;
 	uint32_t xor;
 
-    int samples_per_word = word_size / num_features;
-	int samples_per_block = block_size / num_features;
-	// block_size == 512
-    int num_blocks = ceil(number_entries / block_size);
-    int rows_per_block = block_size / word_size;
+    int samples_per_word = WORD_SIZE / num_features;
+	int samples_per_block = BLOCK_SIZE / num_features;
+	// BLOCK_SIZE == 512
+    int num_blocks = ceil(number_entries / BLOCK_SIZE);
+    int rows_per_block = BLOCK_SIZE / WORD_SIZE;
 	// rows_per_block == 16
-    int cols_per_block = word_size;
+    int cols_per_block = WORD_SIZE;
 	// word size = 32
 	
 	size_t res_idx = 0; // counts for k loop in samples
 	size_t data_index_s = 0; // counts k loop in words
     for(int k = 0; k < num_blocks;k++){
 		size_t j_idx = 0; // rows per block
-        for(int j = 0; j < word_size;++j){
+        for(int j = 0; j < WORD_SIZE;++j){
 			size_t cres_idx = res_idx; // k * samples_per_block
 			for(int m = 0; m < rows_per_block; m++){
 				uint32_t load = data[data_index_s + j_idx + m];
@@ -148,42 +145,40 @@ void q1_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
             }
 			j_idx += rows_per_block;	
 	    }
-		data_index_s += block_size;
+		data_index_s += BLOCK_SIZE;
 		res_idx += samples_per_block;
     }
 }
 
 // scalar replacement
-void q1_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
-	/*
-	if(num_features % 4 != 0 || num_features > 32){
-		printf("can't handle num_features: %i! \n", num_features);
-		return;
-	}
-	*/
+void q1_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples,int num_features ,int number_entries){
+	
+	int64_t start;
+	//start = start_tsc();
     int chunk_index;
 	int feature_index;
 	uint32_t a;
 	uint32_t b;
 	uint32_t xor;
 
-    int samples_per_word = word_size / num_features;
-	int samples_per_block = block_size / num_features;
-	// block_size == 512
-    int num_blocks = ceil(number_entries / block_size);
-    int rows_per_block = block_size / word_size;
+    int samples_per_word = WORD_SIZE / num_features;
+	int samples_per_block = BLOCK_SIZE / num_features;
+	// BLOCK_SIZE == 512
+    int num_blocks = ceil(number_entries / BLOCK_SIZE);
+    int rows_per_block = BLOCK_SIZE / WORD_SIZE;
 	// rows_per_block == 16
-    int cols_per_block = word_size;
+    int cols_per_block = WORD_SIZE;
 	// word size = 32
 	
 	size_t res_idx = 0; // counts for k loop in samples
 	size_t data_index_s = 0; // counts k loop in words
     for(int k = 0; k < num_blocks;k++){
 		size_t j_idx = 0; // rows per block
-        for(int j = 0; j < word_size;++j){
+        for(int j = 0; j < WORD_SIZE;++j){
 			size_t cres_idx = res_idx; // k * samples_per_block
 			for(int m = 0; m < rows_per_block; m++){
 				uint32_t load = data[data_index_s + j_idx + m];
+				
 				int bit_shift = 0;
 				for(int i = 0; i < samples_per_word; i++){
 					
@@ -201,34 +196,33 @@ void q1_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 					bit_shift += num_features; // i * num_features
 				}
 				cres_idx += samples_per_word; // + samples_per_word * m
+				
             }
 			j_idx += rows_per_block;	
 	    }
-		data_index_s += block_size;
+		data_index_s += BLOCK_SIZE;
 		res_idx += samples_per_block;
     }
+	//*comp_cycles += stop_tsc(start);
 }
 
 // unroll for four samples at once..
 // possibly unroll to keep all temps and results in local variables ?
 // possible speedup using 64 bit loads instead of 32 ?
-void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
-	/*
-	if(num_features % 4 != 0 || num_features > 32){
-		printf("can't handle num_features: %i! \n", num_features);
-		return;
-	}
-	*/
+void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples,int num_features ,int number_entries){
+	
+	//int64_t start;
+	
     int chunk_index;
 	int feature_index;
 
-    int samples_per_word = word_size / num_features;
-	int samples_per_block = block_size / num_features;
-	// block_size == 512
-    int num_blocks = ceil(number_entries / block_size);
-    int rows_per_block = block_size / word_size;
+    int samples_per_word = WORD_SIZE / num_features;
+	int samples_per_block = BLOCK_SIZE / num_features;
+	// BLOCK_SIZE == 512
+    int num_blocks = ceil(number_entries / BLOCK_SIZE);
+    int rows_per_block = BLOCK_SIZE / WORD_SIZE;
 	// rows_per_block == 16
-    int cols_per_block = word_size;
+    int cols_per_block = WORD_SIZE;
 	// word size = 32
 	
 	// case where we have 4 or more samples per word and unroll for the word
@@ -237,10 +231,11 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 	size_t data_index_s = 0; // counts k loop in words
     for(int k = 0; k < num_blocks;k++){
 		size_t j_idx = 0; // rows per block
-        for(int j = 0; j < word_size;++j){
+        for(int j = 0; j < WORD_SIZE;++j){
 			size_t cres_idx = res_idx; // k * samples_per_block
 			for(int m = 0; m < rows_per_block; m++){
 				uint32_t load = data[data_index_s + j_idx + m];
+				//start = start_tsc();
 				int bit_shift = 0;
 				for(int i = 0; i < samples_per_word; i += 4){
 					size_t c0 = cres_idx + i;
@@ -293,10 +288,11 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 					bit_shift += 4 * num_features; // i * num_features
 				}
 				cres_idx += samples_per_word; // + samples_per_word * m
+				//*comp_cycles += stop_tsc(start);
             }
 			j_idx += rows_per_block;	
 	    }
-		data_index_s += block_size;
+		data_index_s += BLOCK_SIZE;
 		res_idx += samples_per_block;
     }
 	// case of 16 features, unroll two words at once ?
@@ -304,7 +300,7 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 	size_t res_idx = 0; // counts for k loop in samples
 	size_t data_index = 0; // counts k loop in words
     for(int k = 0; k < num_blocks;k++){
-        for(int j = 0; j < word_size;++j){
+        for(int j = 0; j < WORD_SIZE;++j){
 			size_t cres_idx = res_idx; // k * samples_per_block
 			for(int m = 0; m < rows_per_block; m += 2){
 				uint32_t load = data[data_index];
@@ -408,7 +404,7 @@ void q1_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 		uint32_t temp15 = 0;
 		
 		
-        for(int j = 0; j < word_size;++j){
+        for(int j = 0; j < WORD_SIZE;++j){
 			uint32_t load0 = data[data_index];
 			uint32_t load1 = data[data_index + 1];
 			uint32_t load2 = data[data_index + 2];
@@ -608,23 +604,17 @@ then can optimize parallel & vector
 
 NEGLIGIBLE IMPROVEMENT OVER v5, maybe just remove this one
 */
-void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
-	/*
-	if(num_features % 4 != 0 || num_features > 32){
-		printf("can't handle num_features: %i! \n", num_features);
-		return;
-	}
-	*/
+void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples,int num_features ,int number_entries){
     int chunk_index;
 	int feature_index;
 
     int samples_per_word = 64 / num_features;
-	int samples_per_block = block_size / num_features;
-	// block_size == 512
-    int num_blocks = ceil(number_entries / block_size);
-    int rows_per_block = block_size / 64;
+	int samples_per_block = BLOCK_SIZE / num_features;
+	// BLOCK_SIZE == 512
+    int num_blocks = ceil(number_entries / BLOCK_SIZE);
+    int rows_per_block = BLOCK_SIZE / 64;
 	// rows_per_block == 8
-    int cols_per_block = word_size;
+    int cols_per_block = WORD_SIZE;
 	// word size = 32
 	
 	//printf("spw: %i, spb: %i, nb: %i, cpb: %i \n", samples_per_word, samples_per_block, num_blocks, cols_per_block);
@@ -639,7 +629,7 @@ void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 	
     for(int k = 0; k < num_blocks;k++){
 		size_t j_idx = 0; // rows per block
-        for(int j = 0; j < word_size;++j){
+        for(int j = 0; j < WORD_SIZE;++j){
 			size_t cres_idx = res_idx; // k * samples_per_block
 			for(int m = 0; m < rows_per_block; m++){
 				uint64_t load = d[data_index_s + j_idx + m];
@@ -706,7 +696,7 @@ void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 	size_t res_idx = 0; // counts for k loop in samples
 	size_t data_index = 0; // counts k loop in words
     for(int k = 0; k < num_blocks;k++){
-        for(int j = 0; j < word_size;++j){
+        for(int j = 0; j < WORD_SIZE;++j){
 			size_t cres_idx = res_idx; // k * samples_per_block
 			for(int m = 0; m < rows_per_block; m += 2){
 				uint64_t load = d[data_index];
@@ -857,7 +847,7 @@ void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 		unsigned char temp71 = 0;
 		
 		
-        for(int j = 0; j < word_size;++j){
+        for(int j = 0; j < WORD_SIZE;++j){
 			uint64_t load0 = d[data_index];
 			uint64_t load1 = d[data_index + 1];
 			uint64_t load2 = d[data_index + 2];
@@ -1039,14 +1029,18 @@ void q1_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_siz
 
 
 
-void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
+void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples,int num_features ,int number_entries){
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
+	
 	
 	// b == a >> 1
 	uint64_t a;
 	uint64_t b;
 	
 	uint64_t xor;
-	
 	
 	int samples_per_block = 64 / num_features;
 	int samples_per_cl = samples_per_block * 8;
@@ -1067,6 +1061,9 @@ void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int wo
 	   need to store a res and a temp for each block
 	*/
 	for(int i = 0; i < num_cl; i++){
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){ // 32 == num_bits (should be a constant?)
 			for(int k = 0; k < 8; k++){ // 8 == blocks per CL .. should be a variable according to blocks per cacheline like in "retrieve_from_simple_mlweaving" .. TODO!!
 				// R.a < R.b => a = x, b = y
@@ -1085,14 +1082,14 @@ void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int wo
 				}*/
 				res[k] |= (xor & b) & (~temp[k]);
 				temp[k] |= xor & a;
-				/*
-				if(i == 2 && j == 31 && k == 0){
-					PRINT_64_B(res[k]);
-					LINE;
-				}*/
+
 			}
 		}
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
 		
+		start_res = start_tsc();
+		#endif
 		for(int k = 0; k < 8; k++){
 			uint64_t cres = res[k];
 			for(int m = 0; m < samples_per_block; m++){
@@ -1109,6 +1106,10 @@ void q1_parallel_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int wo
 			temp[k] = 0; // reset temp and res
 			res[k] = 0;
 		}
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
@@ -1127,8 +1128,11 @@ can't do any blocking work, given the way the data is layed out
 at best can try and keep RES/TMP in L1 cache for the non-parallel implementations
 */
 
-void q1_parallel_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples,int num_features ,int number_entries){
-	
+void q1_parallel_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples,int num_features ,int number_entries){
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
 	
 	int samples_per_block = 64 / num_features;
 	int samples_per_cl = samples_per_block * 8;
@@ -1154,7 +1158,9 @@ void q1_parallel_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int
 	int res_idx = 0;
 	int load_idx = 0;
 	for(int i = 0; i < num_cl; i++){
-		
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){ // 32 == num_bits (should be a constant?)
 			
 			a[0] = d[load_idx];
@@ -1217,7 +1223,11 @@ void q1_parallel_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int
 			
 			load_idx += 8;
 		}
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
 		
+		start_res = start_tsc();
+		#endif
 		
 		uint64_t cres_idx = res_idx;
 		
@@ -1225,7 +1235,6 @@ void q1_parallel_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int
 		// want to keep first results in cache while handling last.. need some testing
 		// if only 4 features per sample -> type of results array will have a large impact
 		// maybe only do first 4 words to completion -> then next 4 words
-		
 		for(int m = 0; m < samples_per_block; m++){
 			
 			results[cres_idx] = res[0] & 1;
@@ -1274,6 +1283,168 @@ void q1_parallel_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int
 		temp[7] = 0;
 		res[7] = 0;
 		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
+	}
+}
+
+// SHIFT THE & X instead of all of the results when reading out results!
+void q1_parallel_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples,int num_features ,int number_entries){
+	
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
+	
+	int samples_per_block = 64 / num_features;
+	int samples_per_cl = samples_per_block * 8;
+   	int num_cl = ceil(((float)num_samples) / samples_per_cl);
+
+	//printf("spb: %i, spcl: %i, num_cl: %i, ne: %i \n\n", samples_per_block, samples_per_cl, num_cl, number_entries);
+	// write results to memory after every cacheline block 
+	uint64_t temp[8] = {0}; //start as all 0's
+	uint64_t res[8] = {0};
+	uint64_t a[8] = {0};
+	uint64_t b[8] = {0};
+	uint64_t xor[8] = {0};
+	
+	// use 64bit pointer (do we need to cast?)
+	uint64_t * d = data;
+	
+	/* i is the cacheline block index
+	   j is the bit index (i.e. first to 32nd bit of each value)
+	   k is the block index (we compute blocks at a time!)
+	   
+	   need to store a res and a temp for each block
+	*/
+	int res_idx = 0;
+	int load_idx = 0;
+	for(int i = 0; i < num_cl; i++){
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
+		for(int j = 0; j < 32; j++){ // 32 == num_bits (should be a constant?)
+			
+			a[0] = d[load_idx];
+			a[1] = d[load_idx + 1];
+			a[2] = d[load_idx + 2];
+			a[3] = d[load_idx + 3];
+			
+			b[0] = a[0] >> 1;
+			xor[0] = a[0] ^ b[0];
+			res[0] |= (xor[0] & b[0]) & (~temp[0]);
+			temp[0] |= xor[0] & a[0];
+			
+			
+			b[1] = a[1] >> 1;
+			xor[1] = a[1] ^ b[1];
+			res[1] |= (xor[1] & b[1]) & (~temp[1]);
+			temp[1] |= xor[1] & a[1];
+			
+			
+			b[2] = a[2] >> 1;
+			xor[2] = a[2] ^ b[2];
+			res[2] |= (xor[2] & b[2]) & (~temp[2]);
+			temp[2] |= xor[2] & a[2];
+			
+			
+			b[3] = a[3] >> 1;
+			xor[3] = a[3] ^ b[3];
+			res[3] |= (xor[3] & b[3]) & (~temp[3]);
+			temp[3] |= xor[3] & a[3];
+			
+			a[4] = d[load_idx + 4];
+			a[5] = d[load_idx + 5];
+			a[6] = d[load_idx + 6];
+			a[7] = d[load_idx + 7];
+			
+			b[4] = a[4] >> 1;
+			xor[4] = a[4] ^ b[4];
+			res[4] |= (xor[4] & b[4]) & (~temp[4]);
+			temp[4] |= xor[4] & a[4];
+			
+			
+			b[5] = a[5] >> 1;
+			xor[5] = a[5] ^ b[5];
+			res[5] |= (xor[5] & b[5]) & (~temp[5]);
+			temp[5] |= xor[5] & a[5];
+			
+			
+			b[6] = a[6] >> 1;
+			xor[6] = a[6] ^ b[6];
+			res[6] |= (xor[6] & b[6]) & (~temp[6]);
+			temp[6] |= xor[6] & a[6];
+			
+			
+
+			b[7] = a[7] >> 1;
+			xor[7] = a[7] ^ b[7];
+			res[7] |= (xor[7] & b[7]) & (~temp[7]);
+			temp[7] |= xor[7] & a[7];
+			
+			
+			load_idx += 8;
+		}
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
+		
+		uint64_t cres_idx = res_idx;
+		
+		
+		// want to keep first results in cache while handling last.. need some testing
+		// if only 4 features per sample -> type of results array will have a large impact
+		// maybe only do first 4 words to completion -> then next 4 words
+		uint64_t feature_mask = 1;
+		uint64_t next_fm = 1;
+		for(int m = 0; m < samples_per_block; m++, feature_mask = next_fm){
+			next_fm = feature_mask << num_features;
+			results[cres_idx] = (res[0] & feature_mask) && 1;
+
+			results[cres_idx + samples_per_block] = (res[1] & feature_mask) && 1;
+
+			results[cres_idx + samples_per_block * 2] = (res[2] & feature_mask) && 1;
+
+			results[cres_idx + samples_per_block * 3] = (res[3] & feature_mask) && 1;
+
+			results[cres_idx + samples_per_block * 4] = (res[4] & feature_mask) && 1;
+			
+			results[cres_idx + samples_per_block * 5] = (res[5] & feature_mask) && 1;
+
+			results[cres_idx + samples_per_block * 6] = (res[6] & feature_mask) && 1;
+
+			results[cres_idx + samples_per_block * 7] = (res[7] & feature_mask) && 1;
+			
+			cres_idx++;
+			
+			feature_mask = next_fm;
+		}
+		
+		res_idx += 8 * samples_per_block;
+			
+		temp[0] = 0; // reset temp and res
+		res[0] = 0;
+		temp[1] = 0;
+		res[1] = 0;
+		temp[2] = 0;
+		res[2] = 0;
+		temp[3] = 0;
+		res[3] = 0;
+		temp[4] = 0;
+		res[4] = 0;
+		temp[5] = 0;
+		res[5] = 0;
+		temp[6] = 0;
+		res[6] = 0;
+		temp[7] = 0;
+		res[7] = 0;
+
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
@@ -1338,7 +1509,12 @@ but then really you would just have to load both blocks, not much different.. ca
 at best some register optimization perhaps ? try to limit to 16 registers we reuse? sort of bolck it out that way?
 
 */
-void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries){
+
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
 
 	__m256i a1;
 	__m256i b1;
@@ -1360,6 +1536,9 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 	uint64_t * d = data;
 	
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
@@ -1409,6 +1588,11 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 			temp2 = _mm256_or_si256 (temp2, a2);
 			
 		}
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
 		
 		//printf("reach here");
 		// read results out 
@@ -1487,14 +1671,23 @@ void q1_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps,int word
 		
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
 
 // better indexing, scalar replacement ?
 // maybe storeu is faster than memcpy ? (maybe do a direct comparison too)
-void q1_vector_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+void q1_vector_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries){
 
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
+	
 	__m256i a1;
 	__m256i b1;
 	__m256i xor1;
@@ -1517,6 +1710,9 @@ void q1_vector_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 	int res_idx = 0;
 	
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
@@ -1573,12 +1769,17 @@ void q1_vector_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 			load_idx += 8;
 			
 		}
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
 		
 		//printf("reach here");
 		// read results out 
 		uint64_t cres[4];
 		//memcpy(cres, &res1, sizeof(cres));
-		_mm256_store_pd(cres,(__m256d) res1); // need storeu so it doesn't crash (investigate?)
+		_mm256_storeu_pd(cres,(__m256d) res1); // need storeu so it doesn't crash (investigate?)
 		
 		uint64_t cres0 = cres[0];
 		uint64_t cres1 = cres[1];
@@ -1632,7 +1833,7 @@ void q1_vector_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 		
 		// read results out 
 		uint64_t cres_2[4];
-		_mm256_store_pd(cres_2,(__m256d) res2);
+		_mm256_storeu_pd(cres_2,(__m256d) res2);
 		//memcpy(cres_2, &res2, sizeof(cres_2));
 		uint64_t cres02 = cres_2[0];
 		uint64_t cres12 = cres_2[1];
@@ -1674,6 +1875,10 @@ void q1_vector_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 		
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
@@ -1685,7 +1890,12 @@ void q1_vector_weave_v2(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 // if all features == 0 => skip
 // one extra step but might be worth? have to compare..
 // MORE WORTH FOR MORE FEATURES PER SAMPLE! (if 4 features, we have so many samples per CL it seems unlikely we will get to skip often enough to make it worth the extra checks)
-void q1_vector_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+void q1_vector_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries){
+
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
 
 	__m256i a1;
 	__m256i b1;
@@ -1721,6 +1931,9 @@ void q1_vector_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 	
 	// POSSIBLE OPTIMIZATION? compare with all 0 -> if all 0 then skip to next j (continue;)
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
@@ -1780,11 +1993,16 @@ void q1_vector_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 			
 		}
 		
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
 		//printf("reach here");
 		// read results out 
 		uint64_t cres[4];
 		//memcpy(cres, &res1, sizeof(cres));
-		_mm256_store_pd(cres,(__m256d) res1); // need storeu so it doesn't crash (investigate?)
+		_mm256_storeu_pd(cres,(__m256d) res1); // need storeu so it doesn't crash (investigate?)
 		
 		uint64_t cres0 = cres[0];
 		uint64_t cres1 = cres[1];
@@ -1825,7 +2043,7 @@ void q1_vector_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 		
 		// read results out 
 		uint64_t cres_2[4];
-		_mm256_store_pd(cres_2,(__m256d) res2);
+		_mm256_storeu_pd(cres_2,(__m256d) res2);
 		//memcpy(cres_2, &res2, sizeof(cres_2));
 		uint64_t cres02 = cres_2[0];
 		uint64_t cres12 = cres_2[1];
@@ -1867,12 +2085,21 @@ void q1_vector_weave_v3(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 		
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
 // same as 3 but with testz
-void q1_vector_weave_v3_1(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+void q1_vector_weave_v3_1(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries){
 
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
+	
 	__m256i a1;
 	__m256i b1;
 	__m256i xor1;
@@ -1907,6 +2134,9 @@ void q1_vector_weave_v3_1(uint32_t * data,uint32_t * results,uint32_t *temps,int
 	
 	// POSSIBLE OPTIMIZATION? compare with all 0 -> if all 0 then skip to next j (continue;)
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
@@ -1958,6 +2188,11 @@ void q1_vector_weave_v3_1(uint32_t * data,uint32_t * results,uint32_t *temps,int
 			
 		}
 		
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
 		//printf("reach here");
 		// read results out 
 		uint64_t cres[4];
@@ -2045,6 +2280,10 @@ void q1_vector_weave_v3_1(uint32_t * data,uint32_t * results,uint32_t *temps,int
 		
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
@@ -2052,8 +2291,13 @@ void q1_vector_weave_v3_1(uint32_t * data,uint32_t * results,uint32_t *temps,int
 // BIT MASKS to check for all 0 feature values
 // for some reason this needs storeu while the others work with store? something about the stack i imagine
 // _mm_test_all_zeros would be ideal for this .. 
-void q1_vector_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+void q1_vector_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries){
 
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
+	
 	__m256i a1;
 	__m256i b1;
 	__m256i xor1;
@@ -2102,6 +2346,9 @@ void q1_vector_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 	}
 	
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
@@ -2153,6 +2400,11 @@ void q1_vector_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 			
 		}
 		
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
 		//printf("reach here");
 		// read results out 
 		uint64_t cres[4];
@@ -2240,12 +2492,21 @@ void q1_vector_weave_v4(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 		
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
 // v4 but more fine grained if statements (per vector)
-void q1_vector_weave_v4_1(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+void q1_vector_weave_v4_1(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries){
 
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
+	
 	__m256i a1;
 	__m256i b1;
 	__m256i xor1;
@@ -2294,6 +2555,9 @@ void q1_vector_weave_v4_1(uint32_t * data,uint32_t * results,uint32_t *temps,int
 	}
 	
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
@@ -2344,6 +2608,11 @@ void q1_vector_weave_v4_1(uint32_t * data,uint32_t * results,uint32_t *temps,int
 			
 			load_idx += 8;
 		}
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
 		
 		//printf("reach here");
 		// read results out 
@@ -2432,12 +2701,21 @@ void q1_vector_weave_v4_1(uint32_t * data,uint32_t * results,uint32_t *temps,int
 		
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
 // unroll the loop !
-void q1_vector_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+void q1_vector_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries){
 
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
+	
 	__m256i a1;
 	__m256i b1;
 	__m256i xor1;
@@ -2494,6 +2772,9 @@ void q1_vector_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 	
 	// unroll just by 1 extra to see if there is any speedup before comitting to more unrolls
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j += 2){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
@@ -2580,6 +2861,11 @@ void q1_vector_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 			
 		}
 		
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
 		//printf("reach here");
 		// read results out 
 		uint64_t cres[4];
@@ -2667,6 +2953,10 @@ void q1_vector_weave_v5(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 		
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
@@ -2698,8 +2988,13 @@ testz -> 3 * 4 * #samples per block
 
 
 // attempt at early pruning, focus on 32 / 64 features, any lower and I doubt it would be worth the effort (can test I suppose)
-void q1_vector_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+void q1_vector_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries){
 
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
+	
 	__m256i a1;
 	__m256i b1;
 	__m256i xor1;
@@ -2769,6 +3064,9 @@ void q1_vector_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
 		int done1 = 0;
 		int done2 = 0;
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
@@ -2835,6 +3133,12 @@ void q1_vector_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 				break;
 			}
 		}
+		
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
 		
 		//printf("reach here");
 		// read results out 
@@ -2923,14 +3227,23 @@ void q1_vector_weave_v6(uint32_t * data,uint32_t * results,uint32_t *temps,int w
 		
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
 
 // 64 feature see if testz is faster than storeu ETC
 // in theory it should be slower with 32 features (this implementation should be slower)
 // TODO: test if theory is correct about it being slower
-void q1_vector_weave_v64(uint32_t * data,uint32_t * results,uint32_t *temps,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+void q1_vector_weave_v64(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries){
 
+	#ifdef _PROFILE
+	int64_t start_comp;
+	int64_t start_res;
+	#endif
+	
 	__m256i a1;
 	__m256i b1;
 	__m256i xor1;
@@ -2988,6 +3301,9 @@ void q1_vector_weave_v64(uint32_t * data,uint32_t * results,uint32_t *temps,int 
 	for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
 		int done1 = 0;
 		int done2 = 0;
+		#ifdef _PROFILE
+		start_comp = start_tsc();
+		#endif
 		for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
 			
 			//UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
@@ -3050,6 +3366,12 @@ void q1_vector_weave_v64(uint32_t * data,uint32_t * results,uint32_t *temps,int 
 			}
 		}
 		
+		#ifdef _PROFILE
+		*comp_cycles += stop_tsc(start_comp);
+		
+		start_res = start_tsc();
+		#endif
+		
 		//compare res1 and f0
 		// AND == 0 then it outputs a 1
 		// so just use not res AND f
@@ -3071,5 +3393,9 @@ void q1_vector_weave_v64(uint32_t * data,uint32_t * results,uint32_t *temps,int 
 		
 		temp1 = _mm256_setzero_si256();
 		temp2 = _mm256_setzero_si256();
+		
+		#ifdef _PROFILE
+		*res_cycles += stop_tsc(start_res);
+		#endif
 	}
 }
