@@ -5,6 +5,7 @@
 #include "include/query1.h"
 #include "include/query2.h"
 #include "include/query3.h"
+#include "include/query3_archive.h"
 #include "include/query.h"
 #include "include/unit_tests.h"
 #include "include/validate.h"
