@@ -563,10 +563,12 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 					break;
 				default:
 					__asm("bsrl %1, %0" : "=r"(L) : "r"(d-1) : );  		//ceil(log2)
-					L += 1;												//ceil(log2)
+					L += 1;												
 					L2 = (uint32_t) (L < 32? 1 << L : 0);
 					mod_ops[k].m = 1 + (((uint64_t) (L2 - d)) << 32) / d;
-					mod_ops[k].sh1 = 1; mod_ops[k].sh2 = L-1;
+					mod_ops[k].sh2 = L-1;
+					
+					mod_ops[k].sh1 = 1; 
 				}
 
 		}

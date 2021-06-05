@@ -14,6 +14,7 @@
 #include <math.h>
 #include <x86intrin.h>
 
+
 #define MAX(a,b) (((a)>(b))?(a):(b))
 
 void validate_query(void* query, enum Query type){
