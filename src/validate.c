@@ -181,6 +181,7 @@ bool test_q2(q2_t q,generator gen,size_t rows,size_t cols){
         uint64_t  gt =  q2_groundtruth(db,rows,cols);
         uint32_t * ml = weave_samples_wrapper(db,rows,cols);
         uint64_t res = q2_wrapper(q,ml,rows,cols);
+        //printf("gt: %d \t weave: %d \n", gt, res);
         correct = correct && res == gt;
         free(db);
         free(ml);
@@ -337,13 +338,18 @@ uint32_t *q1_wrapper(q1_t q,uint32_t* data,size_t rows,size_t cols){
 }
 
 uint64_t q2_wrapper(q2_t q,uint32_t* data,size_t rows,size_t cols){
-    uint32_t samples_per_block = 512 / cols;
-    uint32_t * cond_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
-    uint32_t * temp_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
-    uint32_t * sum_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
-    memset(cond_buffer,0,samples_per_block*4);
-	memset(temp_buffer,0,samples_per_block*4);
-	memset(sum_buffer,0,samples_per_block*4);
+    uint32_t * cond_buffer = aligned_alloc( 32, rows * sizeof(uint32_t));
+    uint32_t * temp_buffer = aligned_alloc( 32, rows * sizeof(uint32_t));
+    uint32_t * sum_buffer = aligned_alloc( 32, rows * sizeof(uint32_t));
+    for(size_t i = 0 ; i < rows; ++i ){
+        cond_buffer[i]  = 0;
+        temp_buffer[i] = 0;
+        sum_buffer[i] = 0;
+
+    }
+    
+
+
     size_t numEntries = numberOfEntries(rows,cols);
     uint64_t res = q(data,cond_buffer,temp_buffer,sum_buffer,32,512,rows,cols,numEntries);
     free(cond_buffer);
