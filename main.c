@@ -50,23 +50,18 @@ int main(int argc, char **argv) {
 	// test_integer_vector_division(10000);
 	// test_integer_vector_mod(1000);
 	
-	// validate_query(&q3_vector_v5,Q3);
+	// validate_query(&q2_vector_weave, Q2);
+	// validate_query(&q3_weave_index_vertical_block_v3,Q3);
 	// validate_query(&q2_weave,Q2);
 
-	// test_fast_recon(256,2,asc_gen);
+	//test_fast_recon(256,2,asc_gen);
 	// take_perf(28000,20);
 	// test_integer_vector_mod(10000);
 	// test_q3()
-	// test_fast_recon(256,2,rand_gen);
-
-
+	// test_fast_recon(256,2,asc_gen);
 	// fast_recon()
-	// // correct = test_q3(&q3_weave_index_vertical_block_v2,rand_gen,mod_gen,5120,4,5120,4);
 	// bool correct;
-	// correct = test_q3(&q3_fast_recon_fast_modulo,asc_gen,mod_gen,256,4,128,4);
-	// printf("Correct: %d\n",correct);
-
-	// correct = test_q3(&q3_vector_v5,asc_gen,one_zero_gen,512,4,128,4);
+	// // correct = test_q3(&q3_weave_index_vertical_block_v2,rand_gen,mod_gen,5120,4,5120,4);
 
 	// correct = test_q3(&q3_weave_index_l1_block,rand_gen,	mod_gen,1024,4,1024,4);	
 	// // // correct = test_q3(&q3_vector_v5,rand_gen,mod_gen,256,4,128,4);
@@ -76,6 +71,7 @@ int main(int argc, char **argv) {
 
 	// // correct = test_q3(&q3_weave_index_vertical_block_v3,rand_gen,one_zero_gen,32768,4,32768,4);
 
+	// printf("Correct: %d\n",correct);
 
 	// perf_q3_rows("vert_block_v3,B=1",&q3_weave_index_vertical_block_v3,&one_zero_gen,32768,2,16,5120);
 
@@ -91,6 +87,7 @@ int main(int argc, char **argv) {
 	// perf_q3_rows("l1_block_rand_gen,one_zero,R=32",&q3_weave_index_l1_block,&one_zero_gen,20480,32,4,5120);
 	// perf_q3_rows("vector_v5_rand_gen,one_zero,R=32",&q3_vector_v5,&one_zero_gen,20480,32,4,5120);
 	// perf_q3_rows("vector_v5_rand_gen,one_zero,R=32",&q3_fast_recon_fast_modulo,&one_zero_gen,20480,32,4,5120);
+	// perf_q3_rows("vert_block_v1,B=1",&q3_weave_index_vertical_block_v2,&one_zero_gen,32768,2,16,5120);
 	// perf_q3_rows("with_vert_block=2",&q3_weave_index_vertical_block,&one_zero_gen,32768,2,16,5120);
 	// perf_q3_rows("vector_v4",&q3_vector_v5,&one_zero_gen,32768,2,16,5120);
 	// perf_q3_rows("query3_v3_rand_rand_gen",&q3_vector_v3,&rand_gen,32768,2,16,5120);
