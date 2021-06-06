@@ -15,7 +15,11 @@ uint64_t q2_weave_v2(uint32_t * data,uint32_t * cond_buffer,uint32_t *temp_buffe
 
 uint64_t q2_weave_scalar(uint32_t * data,uint32_t * results,uint32_t *temps, uint32_t *sums,int word_size,int block_size, int num_samples,int num_features,int number_entries);
 
+uint64_t q2_weave_scalar_vector_accum(uint32_t * data,uint32_t * results,uint32_t *temps, uint32_t *sums,int word_size,int block_size, int num_samples,int num_features,int number_entries);
+
 uint64_t q2_weave_unroll(uint32_t * data,uint32_t * results,uint32_t *temps, uint32_t *sums,int word_size,int block_size, int num_samples,int num_features,int number_entries);
+
+uint64_t q2_weave_unroll_vector_accum(uint32_t * data,uint32_t * results,uint32_t *temps, uint32_t *sums,int word_size,int block_size, int num_samples,int num_features,int number_entries);
 
 uint64_t q2_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps, uint32_t *sums,int word_size,int block_size,int num_samples, int num_features,int number_entries);
 

@@ -179,7 +179,9 @@ int main(int argc, char **argv) {
 	// correct = test_q3(&q3_vector_v3,mod_gen,mod_gen,1024,2,1024,4);
 	// printf("Correct: %d\n",correct);
 	
+	void (*queries[7])() = {&q2_weave, &q2_weave_v2, &q2_weave_scalar, &q2_weave_scalar_vector_accum, &q2_weave_unroll, &q2_weave_unroll_vector_accum,&q2_vector_weave};
 
+	performance_rnd_query_v2(queries, Q2, "weavequery2.csv", 7);
 
 	// perf_q3_R_rows("q3_weave_index_l1_block",&q3_weave_index_l1_block,&rand_gen,32768,1024 ,2,1024,4);
 	// perf_q3_R_rows("q3_weave_index",&q3_weave_index,&rand_gen,32768,1024 ,2,1024,4);

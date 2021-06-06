@@ -47,7 +47,7 @@ void performance_rnd_query(void* query, enum Query type,char * out_file_name){
 					cyc = cycles;
 					if(PRINT_CYCLES)
 						printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d\n",cyc, type + 1,row_sizes[j],cols_sizes[k],i);
-					saveCycledataToFile("./q2_cycles.csv",cycles,row_sizes[j],cols_sizes[k],i);
+					saveCycledataToFile(out_file_name,cycles,row_sizes[j],cols_sizes[k],i);
                     break;
                 case Q3:
                     printf(" Test for q%d  with R_rows = %d, R_cols = %d, R_gen = randgen, S_rows = %d, S_cols = %d,S_gen=mod_gen\n",type  + 1,row_sizes[j],cols_sizes[k],row_sizes[j % 2],cols_sizes[k % 2]);
@@ -91,7 +91,13 @@ void performance_rnd_query_v2(void** queries, enum Query type,char * out_file_na
 							printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d, version = %d \n",cyc, type + 1,row_sizes[j],cols_sizes[k],i, m);
 						saveCycledataToFile_v2(out_file_name,cycles,row_sizes[j],cols_sizes[k], 1);
 						break;
-
+                	case Q2:
+						cycles = perf_test_q2((q2_t) queries[m] ,generators[i],row_sizes[j],cols_sizes[k]);
+						cyc = cycles;
+						if(PRINT_CYCLES)
+							printf("%d cycles for q%d  with rows =  %d, cols = %d, gen = %d\n",cyc, type + 1,row_sizes[j],cols_sizes[k],i);
+						saveCycledataToFile(out_file_name,cycles,row_sizes[j],cols_sizes[k],i);
+                    	break;
 					default:
 						printf("Invalid query type!\n");
 						break;
@@ -232,26 +238,27 @@ double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols){
 double perf_test_q2(q2_t q,generator gen,size_t rows,size_t cols){
     bool correct = true;
 	int64_t start,end;
-	double cycles = 0.;
+	double cycles = 0;
 	uint32_t * db = generateDB(rows,cols,gen);
 	uint64_t  gt =  q2_groundtruth(db,rows,cols);
 	uint32_t * ml = weave_samples_wrapper(db,rows,cols);
 
 
     uint32_t samples_per_block = 512 / cols;
-    uint32_t * cond_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
-    uint32_t * temp_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
-    uint32_t * sum_buffer = aligned_alloc( 32, samples_per_block * sizeof(uint32_t));
+    uint32_t * cond_buffer = aligned_alloc( 32, rows * sizeof(uint32_t));
+    uint32_t * temp_buffer = aligned_alloc( 32, rows * sizeof(uint32_t));
+    uint32_t * sum_buffer = aligned_alloc(32, rows * sizeof(uint32_t));
     size_t numEntries = numberOfEntries(rows,cols);
 	uint64_t res;
 		
 	/// Warmup
-		
 	start = start_tsc();
 	for(size_t i = 0; i < N_WARMUP || end * i < 1e8; ++i){
-		memset(cond_buffer,0,samples_per_block*4);
-		memset(temp_buffer,0,samples_per_block*4);
-		memset(sum_buffer,0,samples_per_block*4);
+    	for(size_t j = 0 ; j < rows; ++j ){
+        	cond_buffer[j]  = 0;
+        	temp_buffer[j] = 0;
+        	sum_buffer[j] = 0;
+    	}
 		res = q(ml,cond_buffer,temp_buffer,sum_buffer,32,512,rows,cols,numEntries);
 		correct = correct && res == gt;
 		end = stop_tsc( start);
@@ -266,12 +273,16 @@ double perf_test_q2(q2_t q,generator gen,size_t rows,size_t cols){
 
 	start = start_tsc();
     for(size_t i = 0; i < N_PERF_ITERATION; ++i){
-		memset(cond_buffer,0,samples_per_block*4);
-		memset(temp_buffer,0,samples_per_block*4);
-		memset(sum_buffer,0,samples_per_block*4);
+    	for(size_t j = 0 ; j < rows; ++j ){
+        	cond_buffer[j]  = 0;
+        	temp_buffer[j] = 0;
+        	sum_buffer[j] = 0;
+    	}
 		res = q(ml,cond_buffer,temp_buffer,sum_buffer,32,512,rows,cols,numEntries);
     }
 	end = stop_tsc(start);
+	//printf("end: %d", end);
+
 	correct = correct && res == gt;
 	if(correct)
 		printf("Run correct: TRUE \n");
@@ -283,7 +294,7 @@ double perf_test_q2(q2_t q,generator gen,size_t rows,size_t cols){
     free(sum_buffer);
 	free(db);
 	free(ml);
-	cycles = ((double)end) / N_PERF_ITERATION;
+	cycles = ((double) end) / (double) N_PERF_ITERATION;
 
     return cycles;
 }
