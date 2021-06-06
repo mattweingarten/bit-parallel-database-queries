@@ -21,14 +21,14 @@
 
 
 int main(int argc, char **argv) {
-	srand(time(NULL));
+	// srand(time(NULL));
 
 
 
 
-	perf_q3_selectiviy("selectiviy_fast_recon_O2",&q3_fast_recon_fast_modulo,8192,4);
+	// perf_q3_selectiviy("selectiviy_fast_recon_O2",&q3_fast_recon_fast_modulo,8192,4);
 
-	perf_q3_selectiviy("selectiviy_vector_v5_O2",&q3_vector_v5,8192,4);
+	// perf_q3_selectiviy("selectiviy_vector_v5_O2",&q3_vector_v5,8192,4);
 
 	// uint32_t * S;
 	// uint32_t * R;
@@ -42,6 +42,30 @@ int main(int argc, char **argv) {
 	// q3_index(R,S,gt,&gt_out_size,1024,4,1024,4);
 	// uint32_t* re_gt = realloc(gt,gt_out_size * 2 *  sizeof(uint32_t));
 	
+	// perf_q3_rows("early_prune,R_cols=32",&q3_with_prune,&rand_gen,20480,2,16,5120);
+	// perf_q3_rows("straight_2_4_rand",&q3_weave_index,&rand_gen,10240,2,4,5120);
+	// perf_q3_rows("block_2_4_rand",&q3_weave_index_l1_block,&rand_gen,30720,2,4,5120);
+	// perf_q3_rows("fast_mod_2_4_rand",&q3_vector_v5,&rand_gen,30720,2,4,5120);
+	// perf_q3_rows("fast_recon_2_4_rand",&q3_fast_recon_fast_modulo,&rand_gen,30720,2,4,5120);
+
+
+	// perf_q3_rows("straight_32_rand",&q3_weave_index,&rand_gen,20480,32,32,5120);
+	perf_q3_rows("block_32_rand",&q3_weave_index_l1_block,&rand_gen,30720,32,32,5120);
+	perf_q3_rows("fast_mod_32_rand",&q3_vector_v5,&rand_gen,30720,32,32,5120);
+	perf_q3_rows("fast_recon_32_rand",&q3_fast_recon_fast_modulo,&rand_gen,30720,32,32,5120);
+
+
+
+	// perf_q3_rows("early_prune",&q3_weave_index,&rand_1000_gen,20480,2,4,5120);
+	// perf_q3_rows("early_prune",&q3_weave_index_l1_block,&rand_1000_gen,30720,2,4,5120);
+	// perf_q3_rows("early_prune",&q3_vector_v5,&rand_1000_gen,30720,2,4,5120);
+	// perf_q3_rows("early_prune",&q3_fast_recon_fast_modulo,&rand_1000_gen,30720,2,4,5120);
+
+
+	// perf_q3_rows("early_prune",&q3_fast_recon_fast_modulo,&rand_100_gen,20480,2,16,5120);
+	// perf_q3_rows("early_prune",&q3_fast_recon_fast_modulo,&rand_100_gen,20480,2,16,5120);
+	// perf_q3_rows("early_prune",&q3_fast_recon_fast_modulo,&rand_100_gen,20480,2,16,5120);
+	// perf_q3_rows("early_prune",&q3_fast_recon_fast_modulo,&rand_100_gen,20480,2,16,5120);
 
 	// printf("%f\n",gt_out_size/((double)cart_prod(1024,1024)));
 	// validate_query(&q3_with_prune,Q3);
@@ -77,7 +101,6 @@ int main(int argc, char **argv) {
 
 
 
-	// perf_q3_rows("fast_recon_fast_mod_rand_gen,R_cols=32",&q3_fast_recon_fast_modulo,&rand_gen,20480,32,16,5120);
 	// perf_q3_rows("l1_block_rand_gen,R_cols=32",&q3_weave_index_l1_block,&rand_gen,20480,32,16,5120);
 	// perf_q3_rows("vector_v5_rand_gen,R_cols=32",&q3_vector_v5,&rand_gen,20480,32,16,5120);
 

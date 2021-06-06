@@ -14,12 +14,12 @@ tuples = (512 / cols).astype(int)
 print(tuples)
 ind = np.arange(5)
 width = 0.2
-rects1 = ax.bar(ind,v0['cycles'] / tuples , width, color='darksalmon')
-rects1 = ax.bar(ind + width,v1['cycles'] / tuples , width, color='navajowhite')
-rects1 = ax.bar(ind + 2 * width,v2['cycles'] / tuples , width, color='plum')
+rects1 = ax.bar(ind,v0['cycles'] / tuples , width, color='navajowhite')
+rects1 = ax.bar(ind + width,v1['cycles'] / tuples , width, color='plum')
+rects1 = ax.bar(ind + 2 * width,v2['cycles'] / tuples , width, color='darksalmon')
 
 
-plt.hlines(32,ind[0] - width,ind[4] + 2 * width)
+# plt.hlines(32,ind[0] - width,ind[4] + 2 * width)
 # print()
 
 ax.set_title('Cost of reconstruction')

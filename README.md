@@ -14,10 +14,10 @@ Goal of this project is to improve performance of queries 1-3 on a bit-parallel 
 
 
 ## Query 1 ##
-	```
+```
     SELECT * FROM R WHERE R.a < R.b; 
 
-	```
+```
 
 ## Query 2 ##
 
@@ -39,9 +39,10 @@ Goal of this project is to improve performance of queries 1-3 on a bit-parallel 
 <li> Converter to MLWEAVING: src/converter.c </li>
 <li> Query1 : src/query1.c</li>
 <li> Query2 : src/query2.c</li>
-<li> Query3 : src/query3.c</li>
+<li> Query3 : src/query3.c and src/query3_archive.c</li>
 <li> Validation : src/validate.c</li>
 <li> Performance testing : src/perform.c</li>
+<li> Runtime results and plots : runtimedata/ </li>
 <li> Ideas tested : src/query3_archive.c and srsc/unit_tests.c</li>
 </ul>
 
