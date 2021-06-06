@@ -23,8 +23,15 @@
 int main(int argc, char **argv) {
 	// srand(time(NULL));
 
+	// fast_recon_perf();
 
+	test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,5120,4,5120,4);
+	test_q3(&q3_vector_v5,rand_gen,rand_gen,5120,2,5120,4);
+	test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,5120,4,5120,4);
 
+	test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,5120,4,5120,4);
+	test_q3(&q3_vector_v5,rand_gen,rand_gen,5120,2,5120,4);
+	test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,5120,4,5120,4);
 
 	// perf_q3_selectiviy("selectiviy_fast_recon_O2",&q3_fast_recon_fast_modulo,8192,4);
 
@@ -35,7 +42,7 @@ int main(int argc, char **argv) {
 
 	// generate_selective_db(1024,4,0.8,&S,&R);
 	
-
+	
 	// // PRINT_MALLOC(S,1024,4);
 	// uint32_t gt_out_size = cart_prod(1024,1024);
 	// uint32_t* gt = (uint32_t*) aligned_alloc( 32, gt_out_size * 2 * sizeof(uint32_t));
@@ -50,9 +57,9 @@ int main(int argc, char **argv) {
 
 
 	// perf_q3_rows("straight_32_rand",&q3_weave_index,&rand_gen,20480,32,32,5120);
-	perf_q3_rows("block_32_rand",&q3_weave_index_l1_block,&rand_gen,30720,32,32,5120);
-	perf_q3_rows("fast_mod_32_rand",&q3_vector_v5,&rand_gen,30720,32,32,5120);
-	perf_q3_rows("fast_recon_32_rand",&q3_fast_recon_fast_modulo,&rand_gen,30720,32,32,5120);
+	// perf_q3_rows("block_32_rand",&q3_weave_index_l1_block,&rand_gen,30720,32,32,5120);
+	// perf_q3_rows("fast_mod_32_rand",&q3_vector_v5,&rand_gen,30720,32,32,5120);
+	// perf_q3_rows("fast_recon_32_rand",&q3_fast_recon_fast_modulo,&rand_gen,30720,32,32,5120);
 
 
 
@@ -85,7 +92,6 @@ int main(int argc, char **argv) {
 	// test_fast_recon(256,2,asc_gen);
 	// fast_recon()
 	// bool correct;
-	// // correct = test_q3(&q3_weave_index_vertical_block_v2,rand_gen,mod_gen,5120,4,5120,4);
 
 	// correct = test_q3(&q3_weave_index_l1_block,rand_gen,	mod_gen,1024,4,1024,4);	
 	// // // correct = test_q3(&q3_vector_v5,rand_gen,mod_gen,256,4,128,4);

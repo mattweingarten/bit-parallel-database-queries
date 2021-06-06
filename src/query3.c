@@ -41,6 +41,8 @@ void q3_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, si
 void q3_weave_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
 	
 
+
+
 	size_t cl_block_size = wordsize * cl_size;
 
 	size_t dest_index = 0;
@@ -59,6 +61,8 @@ void q3_weave_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_ro
 	uint32_t S_b;
 	uint32_t S_c;
 
+
+
 	
 
 	// 512 * 32 = 2 ^ 16 -> L1 cache 
@@ -68,7 +72,6 @@ void q3_weave_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_ro
 		size_t R_cl_block_index = (i * R_cols) / cl_block_size;
 		size_t R_cl_index = (i % R_samples_per_cl) / R_samples_per_entry; 
 		size_t R_shift_index = (i % R_samples_per_entry) * R_cols;
-		
 
 
 		for(size_t k = 0;k < wordsize; ++k){
@@ -77,6 +80,7 @@ void q3_weave_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_ro
 			R_a += kth_bit_of_R_a << (wordsize - k - 1);
 	
 		}
+
 		for(size_t j = 0; j < S_rows;++j){
 			S_b = 0;
 			S_c = 0;
@@ -105,16 +109,19 @@ void q3_weave_index(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_ro
 }
 
 
+
+
+
+
 void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
 
 
-	// int64_t start1,end1;
-	// int64_t start2,end2;
-	// int64_t start3,end3;
-	// uint64_t start,end;
-	// double cycles = 0;
-	// int msr_count =  0;
-
+	#ifdef _PROFILE
+	int64_t total_time;
+	int64_t total_time_res;
+	int64_t reconstruct_time;
+	int64_t reconstruct_time_res = 0;
+	#endif
 	size_t dest_index = 0;
 
 	size_t cl_block_size = wordsize * cl_size;
@@ -134,10 +141,14 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 	uint32_t * S_b_buffer = (uint32_t *) aligned_alloc(32,S_smpls_per_cl_block * sizeof(uint32_t));
 	
 	uint32_t * S_c_buffer = (uint32_t *) aligned_alloc(32,S_smpls_per_cl_block * sizeof(uint32_t));
-
+	#ifdef _PROFILE
+	total_time = start_tsc();
+	#endif
 
 	for(size_t i = 0; i < R_num_cl_blocks; ++i){
-		// start1 = start_tsc();
+		#ifdef _PROFILE
+		reconstruct_time = start_tsc();
+		#endif
 		memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
 		for(size_t k  = 0; k < wordsize;++k){
 			for(size_t m = 0; m < cl_size; ++m){
@@ -150,14 +161,17 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 			}
 		}
 
-		// end1 = stop_tsc(start1);
+		#ifdef _PROFILE
+		int64_t end = stop_tsc(reconstruct_time);
+		reconstruct_time_res += end;
+		#endif
+
 
 		
 		for(size_t j = 0; j < S_num_cl_blocks;++j){
-
-			// start = start_tsc();
-
-			// start2 = start_tsc();
+			#ifdef _PROFILE
+			reconstruct_time = start_tsc();
+			#endif
 			memset(S_b_buffer,0,S_smpls_per_cl_block * 4);
 			memset(S_c_buffer,0,S_smpls_per_cl_block * 4);
 			for(size_t k  = 0 ; k < wordsize; ++k){
@@ -179,16 +193,11 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 				}
 				
 			}
-
-			// end = stop_tsc( start);
-			// cycles += (double) end;
-
-			// msr_count++;
-
-			
-
-			// end2 = stop_tsc(start2);
-
+				
+			#ifdef _PROFILE
+			int64_t end = stop_tsc(reconstruct_time);
+			reconstruct_time_res += end;
+			#endif
 			// HLINE;
 			// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
 			// PRINT_MALLOC(R_a_buffer,R_smpls_per_cl_block,1);
@@ -209,7 +218,11 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 			// printf("%u %u %u\n",end1,end2,end3);
 		}
 	}
-	
+	#ifdef _PROFILE
+	total_time_res = stop_tsc(total_time);
+	printf("%lu,%lu\n",total_time_res,reconstruct_time_res);
+	printf("%lf\n",100 * ((double) reconstruct_time_res)/ total_time_res);
+	#endif
 	free(R_a_buffer);
 	free(S_b_buffer);
 	free(S_c_buffer);
@@ -224,12 +237,13 @@ void q3_weave_index_l1_block(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t 
 
 
 
-
-
-
-
 void q3_vector_v5(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
-
+	#ifdef _PROFILE
+	int64_t total_time;
+	int64_t total_time_res;
+	int64_t reconstruct_time;
+	int64_t reconstruct_time_res = 0;
+	#endif
 
 
 	size_t dest_index = 0;
@@ -260,12 +274,20 @@ void q3_vector_v5(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 	__m256i S_b_vector;
 	__m256i S_c_vector;
 	__m256i next_word;
-	
+		#ifdef _PROFILE
+		total_time = start_tsc();
+		#endif
+
+
+
 	for(size_t j = 0; j < S_num_cl_blocks;++j){
 		memset(S_b_buffer,0,S_smpls_per_cl_block * 4);
 		memset(S_c_buffer,0,S_smpls_per_cl_block * 4);
 
 		uint32_t word_shift_index = wordsize  - 1;
+		#ifdef _PROFILE
+		reconstruct_time = start_tsc();
+		#endif
 		for(size_t k  = 0 ; k < wordsize; ++k){
 
 
@@ -308,6 +330,12 @@ void q3_vector_v5(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 			word_shift_index -= 1;
 		}
 
+		#ifdef _PROFILE
+		int64_t end = stop_tsc(reconstruct_time);
+		reconstruct_time_res += end;
+		#endif
+
+
 		// PRINT_MALLOC(S_b_buffer,S_smpls_per_cl_block,1);LINE;
 		// Loaded and rebuilt 1 cl_block of S
 		// Now we can compute the values for fast modulo, the cost of this is amortized since we only do this 
@@ -340,10 +368,13 @@ void q3_vector_v5(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 
 
 
-
+	
 
 		uint32_t * R_next_word_index = dR;
 		for(size_t i = 0; i < R_num_cl_blocks; ++i){
+		#ifdef _PROFILE
+		reconstruct_time = start_tsc();
+		#endif
 		__m256i R_a_vector;
 		__m256i next_word_R;
 		memset(R_a_buffer,0,R_smpls_per_cl_block * 4);
@@ -371,6 +402,12 @@ void q3_vector_v5(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 				}
 				word_shift_index -= 1;
 			}
+
+				
+			#ifdef _PROFILE
+			int64_t end = stop_tsc(reconstruct_time);
+			reconstruct_time_res += end;
+			#endif
 
 
 			for(size_t l = 0; l < S_smpls_per_cl_block;++l){
@@ -417,15 +454,29 @@ void q3_vector_v5(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows
 	} //end cl_block S
 
 
-
+	#ifdef _PROFILE
+	total_time_res = stop_tsc(total_time);
+	printf("%lu,%lu\n",total_time_res,reconstruct_time_res);
+	printf("%lf\n",100 * ((double) reconstruct_time_res)/ total_time_res);	
+	#endif
 	free(R_a_buffer);
 	free(S_b_buffer);
 	free(S_c_buffer);
 	free(mod_ops);
 	*dest_rows = dest_index;
+
+
 }
 
 void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_t * dest_rows, size_t R_rows, size_t R_cols, size_t S_rows, size_t S_cols,size_t wordsize, size_t cl_size){
+	#ifdef _PROFILE
+	int64_t total_time;
+	int64_t total_time_res;
+	int64_t reconstruct_time;
+	int64_t reconstruct_time_res = 0;
+	#endif
+	
+	
 	size_t dest_index = 0;
 	size_t cl_block_size = wordsize * cl_size;
 	
@@ -459,11 +510,17 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 	__m256i shift_index_2432 = _mm256_set_epi32(24,25,26,27,28,29,30,31);
 	__m256i index = _mm256_setr_epi32(0,16,32,48,64,80,96,112);
 	__m256i mask = _mm256_set1_epi32(1);
-
+	#ifdef _PROFILE
+	total_time = start_tsc();
+	#endif
 
 	for(size_t i = 0; i < S_num_cl_blocks;++i){
+
+		#ifdef _PROFILE
+		reconstruct_time = start_tsc();
+		#endif
 		uint32_t * _1bit_index = dS + i * cl_block_size;
-		uint32_t * _2bit_index = dS + i * cl_block_size+  cl_size * 8;
+		uint32_t * _2bit_index = dS + i * cl_block_size +  cl_size * 8;
 		uint32_t * _3bit_index = dS + i * cl_block_size + cl_size * 16;
 		uint32_t * _4bit_Index = dS + i * cl_block_size + cl_size * 24;
 
@@ -543,7 +600,10 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 			_4bit_Index++;
 
 		}
-
+		#ifdef _PROFILE
+		int64_t end = stop_tsc(reconstruct_time);
+		reconstruct_time_res += end;
+		#endif
 
 		//Computation for fast modulo 
 
@@ -577,6 +637,9 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 
 
 		for(size_t p = 0; p < R_num_cl_blocks;++p){
+			#ifdef _PROFILE
+			reconstruct_time = start_tsc();
+			#endif
 			_1bit_index = dR + p * cl_block_size;
 			_2bit_index = dR + p * cl_block_size+  cl_size * 8;
 			_3bit_index = dR + p * cl_block_size + cl_size * 16;
@@ -624,7 +687,10 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 				_3bit_index++;
 				_4bit_Index++;
 			}
-			
+			#ifdef _PROFILE
+			int64_t end = stop_tsc(reconstruct_time);
+			reconstruct_time_res += end;
+			#endif
 			// PRINT_MALLOC_H(S_b_buffer,S_smpls_per_cl_block);LINE;
 			// PRINT_MALLOC_H(R_a_buffer,R_smpls_per_cl_block);LINE;
 			// PRINT_MALLOC_H(S_c_buffer,S_smpls_per_cl_block);LINE;
@@ -678,6 +744,13 @@ void q3_fast_recon_fast_modulo(uint32_t *dR, uint32_t *dS, uint32_t * dest,size_
 
 		// PRINT_MALLOC(S_c_buffer,S_smpls_per_cl_block,1);
 	} //end cl_block S
+	
+
+	#ifdef _PROFILE
+	total_time_res = stop_tsc(total_time);
+	printf("%lu,%lu\n",total_time_res,reconstruct_time_res);
+	printf("%lf\n",100 * ((double) reconstruct_time_res)/ total_time_res);
+	#endif
 
 	*dest_rows = dest_index;
 	free(R_a_buffer);
