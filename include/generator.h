@@ -10,6 +10,7 @@ typedef uint32_t (*generator) (size_t,size_t);
 
 
 uint32_t* generateDB(size_t rows,size_t cols, generator);
+void generate_selective_db(size_t rows,size_t cols, double alpha,uint32_t** S, uint32_t** R);
 // generators
 uint32_t rand_gen(size_t i, size_t j );
 uint32_t rand_100_gen(size_t i, size_t j );

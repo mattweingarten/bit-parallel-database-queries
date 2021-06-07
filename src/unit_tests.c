@@ -367,13 +367,15 @@ void fast_recon_perf(void){
 		uint32_t * res = (uint32_t * ) malloc(512 * sizeof(uint32_t));
 		start = start_tsc();
 		for(int i = 0; i < 1000;++i){
-			fast_recon_v3(ml,res,row,cols[j]);
+			// fast_recon_v3(ml,res,row,cols[j]);
+			fast_recon(ml,res,row,cols[j]);
 		}
 		end = stop_tsc(start);
 
 		start = start_tsc();
 		for(int i = 0; i < 10000;++i){
-			fast_recon_v3(ml,res,row,cols[j]);
+			// fast_recon_v3(ml,res,row,cols[j]);
+			fast_recon(ml,res,row,cols[j]);
 		}
 		end = stop_tsc(start);
 		double cycles = ((double) end ) / 10000;

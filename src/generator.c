@@ -5,6 +5,7 @@
 #include <stdlib.h>
 #include<stdbool.h>  
 #include <stdarg.h>
+#include <assert.h>
 
 
 //generators to populate malloc
@@ -104,6 +105,41 @@ uint32_t* generateDB(size_t rows,size_t cols, generator gen){
         }	
 	}
     return res;
+}
+
+
+void generate_selective_db(size_t rows,size_t cols, double alpha,uint32_t** S, uint32_t** R){   
+
+
+    uint32_t* res_R = (uint32_t*)  malloc(rows * cols * sizeof(uint32_t));
+    uint32_t* res_S = (uint32_t*)  malloc(rows * cols * sizeof(uint32_t));
+    
+    assert(cols >= 4);
+
+    for(size_t i = 0; i < rows;++i){
+		for(size_t j = 0; j < cols;++j){
+            res_R[i * cols + j] = ((uint32_t) rand() %1000);
+        }
+        res_S[i * cols] = ((uint32_t) rand() << 1) + ((uint32_t) rand() % 2);
+        double r = (double)rand() / (double)RAND_MAX ;
+        // printf("%f\n",r);
+        if(r < alpha){
+            res_S[i * cols + 1] = 1;
+            res_S[i * cols + 2 ] = 0;
+        }else{
+            res_S[i * cols + 1] = ((uint32_t) rand() << 1) + ((uint32_t) rand() % 2);
+            res_S[i * cols + 2 ] = ((uint32_t) rand() %1000) + 10000;
+        }
+
+        for(size_t j = 3; j < cols;++j){
+            res_S[i * cols + j] =  ((uint32_t) rand() << 1) + ((uint32_t) rand() % 2);
+        }
+        
+	}
+    // printf("Here!%lx,%lx\n",S,R);
+    *S = res_S;
+    *R = res_R;
+    // return res;
 }
 
 
