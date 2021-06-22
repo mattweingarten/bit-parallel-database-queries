@@ -25,18 +25,18 @@ int main(int argc, char **argv) {
 
 	// fast_recon_perf();
 
-	test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,5120,4,5120,4);
-	test_q3(&q3_vector_v5,rand_gen,rand_gen,5120,2,5120,4);
-	test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,5120,4,5120,4);
+	// test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,5120,4,5120,4);
+	// test_q3(&q3_vector_v5,rand_gen,rand_gen,5120,2,5120,4);
+	// test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,5120,4,5120,4);
 
-	test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,5120,4,5120,4);
-	test_q3(&q3_vector_v5,rand_gen,rand_gen,5120,2,5120,4);
-	test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,5120,4,5120,4);
+	// test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,5120,4,5120,4);
+	// test_q3(&q3_vector_v5,rand_gen,rand_gen,5120,2,5120,4);
+	// test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,5120,4,5120,4);
 
 	// perf_q3_selectiviy("selectiviy_fast_recon_O2",&q3_fast_recon_fast_modulo,8192,4);
 
 	// perf_q3_selectiviy("selectiviy_vector_v5_O2",&q3_vector_v5,8192,4);
-
+	validate_query(&q3_fast_recon_fast_modulo,Q3);
 	// uint32_t * S;
 	// uint32_t * R;
 
