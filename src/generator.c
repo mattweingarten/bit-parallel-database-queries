@@ -77,6 +77,24 @@ uint32_t first_col_gen(size_t i, size_t j){
     }
 }
 
+uint32_t all_zero_gen(size_t i, size_t j){
+	return 0;
+}
+
+
+uint32_t top_16_bits_zero_gen(size_t i, size_t j){
+	return ((uint32_t) rand() % 65536);
+}
+
+uint32_t j_bigger_by_up_to_5_bits(size_t i, size_t j){
+	if(j == 0)
+		return 256;
+	if(j == 1)
+		return 256 << (i % 5);
+	return rand() % 8192;
+}
+
+
 
 uint32_t* generateDB(size_t rows,size_t cols, generator gen){
     uint32_t* res = (uint32_t*)  malloc(rows * cols * sizeof(uint32_t));
