@@ -1,4 +1,4 @@
-
+// #include <mysql.h>
 #include "include/load.h"
 #include "include/converter.h"
 #include "include/debug.h"
@@ -11,6 +11,7 @@
 #include "include/unit_tests.h"
 #include "include/validate.h"
 #include "include/perform.h"
+#include "include/tsc_x86.h"
 #include <stdint.h> 
 #include <stdio.h>
 #include <stdlib.h>
@@ -21,22 +22,48 @@
 
 
 int main(int argc, char **argv) {
-	// srand(time(NULL));
+	srand(time(NULL));
 
 	// fast_recon_perf();
+// maj
+	test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,40960,4,40960,4);
+	test_q3(&q3_vector_v5,rand_gen,rand_gen,40960,4,40960,4);
+	test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,40960,4,40960,4);
 
-	test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,5120,4,5120,4);
-	test_q3(&q3_vector_v5,rand_gen,rand_gen,5120,2,5120,4);
-	test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,5120,4,5120,4);
+	test_q3(&q3_l2_blocking,rand_gen,rand_gen,40960,4,40960,4);
 
-	test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,5120,4,5120,4);
-	test_q3(&q3_vector_v5,rand_gen,rand_gen,5120,2,5120,4);
-	test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,5120,4,5120,4);
+
+
+	// test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,5120,4,5120,4);
+	// test_q3(&q3_vector_v5,rand_gen,rand_gen,5120,2,5120,4);
+	// test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,5120,4,5120,4);
 
 	// perf_q3_selectiviy("selectiviy_fast_recon_O2",&q3_fast_recon_fast_modulo,8192,4);
 
 	// perf_q3_selectiviy("selectiviy_vector_v5_O2",&q3_vector_v5,8192,4);
+	// validate_query(&q3_l2_blocking,Q3);
 
+	// bool correct = true;
+
+
+	// myInt64 start,end;
+	// myInt64 cycles;
+	// start = start_tsc();
+	// for(int i =0 ; i < 10;++i){
+	// 	correct = correct && test_q3(&q3_l2_blocking,asc_gen,asc_gen,1024,4,1024,4);	
+
+	// }
+	// start = start_tsc();
+
+	// for(int i =0 ; i < 1000;++i){
+	// 	correct = correct && test_q3(&q3_l2_blocking,asc_gen,asc_gen,1024,4,1024,4);	
+
+	// }
+	// end = stop_tsc(start);
+	// printf("%lu,%lu\n",start,end);
+	// cycles = end /  1000;
+	// printf("%lu\n",cycles);
+	// printf("%d\n",correct);
 	// uint32_t * S;
 	// uint32_t * R;
 
@@ -179,9 +206,9 @@ int main(int argc, char **argv) {
 	// correct = test_q3(&q3_vector_v3,mod_gen,mod_gen,1024,2,1024,4);
 	// printf("Correct: %d\n",correct);
 	
-	void (*queries[7])() = {&q2_weave, &q2_weave_v2, &q2_weave_scalar, &q2_weave_scalar_vector_accum, &q2_weave_unroll, &q2_weave_unroll_vector_accum,&q2_vector_weave};
+	// void (*queries[7])() = {&q2_weave, &q2_weave_v2, &q2_weave_scalar, &q2_weave_scalar_vector_accum, &q2_weave_unroll, &q2_weave_unroll_vector_accum,&q2_vector_weave};
 
-	performance_rnd_query_v2(queries, Q2, "weavequery2.csv", 7);
+	// performance_rnd_query_v2(queries, Q2, "weavequery2.csv", 7);
 
 	// perf_q3_R_rows("q3_weave_index_l1_block",&q3_weave_index_l1_block,&rand_gen,32768,1024 ,2,1024,4);
 	// perf_q3_R_rows("q3_weave_index",&q3_weave_index,&rand_gen,32768,1024 ,2,1024,4);
