@@ -158,12 +158,15 @@ int main(int argc, char **argv) {
         if (mysql_query(con, "SELECT a FROM r WHERE r.a < r.b")) {
             finish_with_error(con);
         }
-        end = stop_tsc(start);
+        end += stop_tsc(start);
         printf("%llu\n",end);
         result = mysql_store_result(con);
         mysql_free_result(result);
   
     }
+	end /= 10;
+	end /= R_rows;
+	printf("%llu cycles per sample \n", end);
     mysql_close(con);
     return 0;
 }
