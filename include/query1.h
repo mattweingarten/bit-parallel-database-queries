@@ -42,6 +42,8 @@ void q1_vector_unroll8(uint32_t * data,uint32_t * results,uint32_t *temps,int64_
 
 void q1_vector_unroll16(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries);
 
+void q1_vector_unroll4_2xread(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries);
+
 void q1_vector_0line(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries);
 
 void q1_vector_0line_testz(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries);
@@ -53,6 +55,8 @@ void q1_vector_0check_fine(uint32_t * data,uint32_t * results,uint32_t *temps,in
 void q1_vector_0check_u2(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries);
 
 void q1_vector_0check_u4(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries);
+
+void q1_vector_xorcheck_u4(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries);
 
 void q1_vector_early(uint32_t * data,uint32_t * results,uint32_t *temps,int64_t *comp_cycles,int64_t *res_cycles,int num_samples, int num_features,int number_entries);
 

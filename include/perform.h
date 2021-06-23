@@ -13,7 +13,7 @@
 
 // typedef uint32_t (*generator) (size_t,size_t); 
 #define N_PERF_ITERATION 10
-#define N_WARMUP 120
+#define N_WARMUP 10000
 #define PRINT_CYCLES 1
 #define MIN_CYCLES 1e10
 
@@ -31,6 +31,7 @@ double profile_q1(q1_t q,size_t rows,size_t cols, uint32_t* db);
 
 double perf_test_q1(q1_t q,generator gen,size_t rows,size_t cols);
 double perf_test_q1_v2(q1_t q,size_t rows,size_t cols, uint32_t* db);
+double perf_test_q1_gt(size_t rows,size_t cols, uint32_t* db);
 double perf_test_q2(q2_t q,generator gen,size_t rows,size_t cols);
 double perf_test_q3(q3_t q,generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols);
 
