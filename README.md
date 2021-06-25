@@ -1,7 +1,6 @@
-
 # Optimizing relational queries over a bit-parallel database layout #
 
-Goal of this project is to improve performance of queries 1-3 on a bit-parallel database layout, namely a DB in an [MLWEAVING](https://arxiv.org/abs/1903.03404) format. Similiar [bit-parallel database layouts] ( https://15721.courses.cs.cmu.edu/spring2016/papers/li-sigmod2013.pdf)
+Goal of this project is to improve performance of queries 1-3 on a bit-parallel database layout, namely a DB in an [MLWEAVING](https://arxiv.org/abs/1903.03404) format. Similiar [bit-parallel database layouts](https://15721.courses.cs.cmu.edu/spring2016/papers/li-sigmod2013.pdf)
 ## Team 38 ##
 <ul>
 
@@ -42,14 +41,18 @@ Goal of this project is to improve performance of queries 1-3 on a bit-parallel 
 <li> Query3 : src/query3.c and src/query3_archive.c</li>
 <li> Validation : src/validate.c</li>
 <li> Performance testing : src/perform.c</li>
-<li> Runtime results and plots : runtimedata/ </li>
+<li> Runtime results  : runtimedata/ </li>
 <li> Ideas tested : src/query3_archive.c and srsc/unit_tests.c</li>
+<li> Plots : plotting/</li>
 </ul>
 
 
 ## Contributions ## 
 <ul>
-
+    <li> Sebastian: Bit-wise modulo </li>
+    <li> Dominik: Layout converter, query 1 </li>
+    <li> Micheal: query 2 </li>
+    <li> Matt: query 3, all straightforward implementations </li>
 
 </ul>
 
