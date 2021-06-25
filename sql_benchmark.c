@@ -74,18 +74,18 @@ int main(int argc, char **argv) {
     }
 
 
-    for(size_t i = 0; i < S_rows;++i){
-        // for(size_t j = 0; j < 4; ++j);
-        uint32_t a = rand(); 
-        uint32_t b = rand(); 
-        uint32_t c = rand(); 
-        uint32_t d = rand(); 
-        char query_buffer[1024]; 
-        snprintf(query_buffer, sizeof(query_buffer), "INSERT INTO s VALUES (%u, %u,%u,%u)", a, b,c,d);
-        if (mysql_query(con, query_buffer)) {
-            finish_with_error(con);
-        }
-    }
+    // for(size_t i = 0; i < S_rows;++i){
+    //     // for(size_t j = 0; j < 4; ++j);
+    //     uint32_t a = rand(); 
+    //     uint32_t b = rand(); 
+    //     uint32_t c = rand(); 
+    //     uint32_t d = rand(); 
+    //     char query_buffer[1024]; 
+    //     snprintf(query_buffer, sizeof(query_buffer), "INSERT INTO s VALUES (%u, %u,%u,%u)", a, b,c,d);
+    //     if (mysql_query(con, query_buffer)) {
+    //         finish_with_error(con);
+    //     }
+    // }
 
 
 
@@ -112,13 +112,16 @@ int main(int argc, char **argv) {
        
         start = start_tsc();
 
-        // if (mysql_query(con, "SELECT r.a, s.a FROM r,s WHERE r.a \% s.b = s.c")) {
-        //     finish_with_error(con);
-        // }
-        
-        if (mysql_query(con, "SELECT r.a, s.a FROM r,s WHERE r.a = s.a")) {
+        if (mysql_query(con, "SELECT r.a, s.a FROM r,s WHERE r.a \% s.b = s.c")) {
             finish_with_error(con);
         }
+        
+        // if (mysql_query(con, "SELECT r.a, s.a FROM r,s WHERE r.a = s.a")) {
+        //     finish_with_error(con);
+        // }
+        // if (mysql_query(con, "SELECT r.a FROM r WHERE r.a > r.b")) {
+        //     finish_with_error(con);
+        // }
         
         end = stop_tsc(start);
         printf("%llu\n",end);
@@ -136,6 +139,14 @@ int main(int argc, char **argv) {
         if (mysql_query(con, "SELECT r.a FROM r,s WHERE r.a \% s.b = s.c")) {
             finish_with_error(con);
         }
+        // if (mysql_query(con, "SELECT r.a, s.a FROM r,s WHERE r.a = s.a")) {
+        //     finish_with_error(con);
+        // }
+
+
+        // if (mysql_query(con, "SELECT r.a FROM r WHERE r.a > r.b")) {
+        //     finish_with_error(con);
+        // }
         end = stop_tsc(start);
         printf("%llu\n",end);
         result = mysql_store_result(con);

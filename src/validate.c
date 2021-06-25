@@ -77,8 +77,6 @@ void validate_query(void* query, enum Query type){
 
 
                 case Q3b:
-                    //TODO: make this smarter here
-                    // for(size_t b_size = 1; b_size < )
                     correct = test_q3_block((q3b_t) query,&rand_gen,&mod_gen,row_sizes[j  % 2 + 3],cols_sizes[k],row_sizes[j % 3 + 1],cols_sizes[k % 2 + 1],4);
                     if(correct){
                         count_correct++;

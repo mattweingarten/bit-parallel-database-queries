@@ -24,13 +24,53 @@
 int main(int argc, char **argv) {
 	srand(time(NULL));
 
-	// fast_recon_perf();
-// maj
-	test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,40960,4,40960,4);
-	test_q3(&q3_vector_v5,rand_gen,rand_gen,40960,4,40960,4);
-	test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,40960,4,40960,4);
+	// perf_q3_rows("baseline",&q3_weave_index_l1_block,&rand_1000_gen,81920,32,32,5120);
+	perf_q3_rows("l2_block",&q3_final,&rand_gen,30720,32,32,5120);
+	// perf_q3_rows("vector_v5",&q3_vector_v5,&rand_1000_gen,81920,32,32,5120);
+	// perf_q3_rows("fast_recon",&q3_fast_recon_fast_modulo,&rand_1000_gen,81920,32,32,5120);
+	// perf_q3_rows("l2_block",&q3_final,&rand_1000_gen,81920,32,32,5120);
 
-	test_q3(&q3_l2_blocking,rand_gen,rand_gen,40960,4,40960,4);
+
+	// test_q3(&q3_l2_blocking,rand_gen,rand_gen,40960,4,40960,4);
+	// perf_q3_rows("l2_block.txt",rand_gen,40960,4,4,40960);
+	// double cycles =  perf_test_q3(&q3_l2_blocking,rand_gen,rand_gen,40960,32,40960,32);
+	// printf("%lf\n",cycles);
+
+
+	// validate_query(&q3_final,Q3);
+	// for(size_t i = 1; i <= 10; ++i){
+	// 	double cycles = perf_test_q3_blocked(q3_l2_blocking,rand_gen,rand_gen,10240,16,10240,16,i);
+	// 	printf("%lf,%d\n",cycles,i);
+	// }
+
+	// size_t rows = 40960;
+	// uint32_t* db = generateDB(40960,4,rand_gen);
+	// // myInt64 start,end;
+	// double res;
+	// for(size_t i = 0; i < 10; ++i){
+	// 	res = perf_test_q1_v2(q1_vector_unroll4,40960,4,db);
+	// 	// start = start_tsc();
+
+	// }
+
+	// for(size_t i = 0; i < 10; ++i){
+	// 	res = perf_test_q1_v2(q1_vector_unroll4,40960,4,db);
+	// 	printf("%lf\n",res);
+	// 	// start = start_tsc();
+
+	// }
+	 
+	
+	// validate_query(q3_l2_blocking,Q3);
+	// test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,40960,4,40960,4);
+	// test_q3(&q3_vector_v5,rand_gen,rand_gen,40960,4,40960,4);
+	// test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,40960,4,40960,4);
+	// test_q3(&q3_l2_blocking,rand_gen,rand_gen,40960,4,40960,4);
+	// test_q3(&q3_weave_index_l1_block,rand_gen,rand_gen,40960,4,40960,4);
+	// test_q3(&q3_vector_v5,rand_gen,rand_gen,81920,4,81920,4);
+	// test_q3(&q3_fast_recon_fast_modulo,rand_gen,rand_gen,81920,4,81920,4);
+	// test_q3(&q3_l2_blocking,rand_gen,rand_gen,81920,4,81920,4);
+
 
 
 
@@ -90,10 +130,8 @@ int main(int argc, char **argv) {
 
 
 
-	// perf_q3_rows("early_prune",&q3_weave_index,&rand_1000_gen,20480,2,4,5120);
-	// perf_q3_rows("early_prune",&q3_weave_index_l1_block,&rand_1000_gen,30720,2,4,5120);
-	// perf_q3_rows("early_prune",&q3_vector_v5,&rand_1000_gen,30720,2,4,5120);
-	// perf_q3_rows("early_prune",&q3_fast_recon_fast_modulo,&rand_1000_gen,30720,2,4,5120);
+	// perf_q3_rows("early_prune",&q3_weave_index,&rand_1000_gen,163840,2,4,5120);
+
 
 
 	// perf_q3_rows("early_prune",&q3_fast_recon_fast_modulo,&rand_100_gen,20480,2,16,5120);

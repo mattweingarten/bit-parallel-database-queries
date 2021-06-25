@@ -373,7 +373,7 @@ double perf_test_q2(q2_t q,generator gen,size_t rows,size_t cols){
 
 double perf_test_q3(q3_t q,generator R_gen,generator S_gen,size_t R_rows,size_t R_cols, size_t S_rows,size_t S_cols){
 
-	int64_t start,end;
+	myInt64 start,end;
 	double cycles = 0.;
 	uint32_t* R = generateDB(R_rows,R_cols,R_gen);
 	uint32_t* S = generateDB(S_rows,S_cols,S_gen);
