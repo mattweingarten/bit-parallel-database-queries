@@ -27,6 +27,7 @@ uint32_t rand_10_gen(size_t i, size_t j );
 uint32_t first_col_gen(size_t i, size_t j);
 uint32_t rand_1000_gen(size_t i, size_t j );
 uint32_t j_bigger_by_up_to_5_bits(size_t i, size_t j);
+uint32_t big_value_gen(size_t i, size_t j);
 uint32_t top_16_bits_zero_gen(size_t i, size_t j);
 uint32_t all_zero_gen(size_t i, size_t j);
 #endif 

@@ -81,9 +81,17 @@ uint32_t all_zero_gen(size_t i, size_t j){
 	return 0;
 }
 
+uint32_t big_value_gen(size_t i, size_t j){
+	if(j == 0)
+		return 4294967295;
+	if(j == 1)
+		return 4294967295 - 1048576;
+	return rand();
+}
+
 
 uint32_t top_16_bits_zero_gen(size_t i, size_t j){
-	return ((uint32_t) rand() % 65536);
+	return ((uint32_t) rand() % 1024);
 }
 
 uint32_t j_bigger_by_up_to_5_bits(size_t i, size_t j){

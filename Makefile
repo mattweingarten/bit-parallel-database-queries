@@ -17,3 +17,6 @@ optim:
 
 sql:
 	gcc -O0 -std=c99 ./src/generator.c ./src/tsc.c ./sql_benchmark.c -o sql_benchmark `mysql_config --cflags --libs`
+	
+sqlq1:
+	gcc -O0 -std=c99 ./src/generator.c ./src/tsc.c ./sql_benchmark_q1.c -o sql_benchmark_q1 `mysql_config --cflags --libs`

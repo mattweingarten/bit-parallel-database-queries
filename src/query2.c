@@ -1678,3 +1678,267 @@ uint64_t q2_vector_weave(uint32_t * data,uint32_t * results,uint32_t *temps, uin
     }
     return sum;
 }
+
+uint64_t q2_vector_weave_2(uint32_t * data,uint32_t * results,uint32_t *temps, uint32_t *sums,int word_size,int block_size,int num_samples, int num_features,int number_entries){
+
+    __m256i a1;
+    __m256i b1;
+    __m256i c1;
+    __m256i xor1;
+    __m256i a2;
+    __m256i b2;
+    __m256i c2;
+    __m256i xor2;
+
+    __m256i zeros= _mm256_setzero_si256();
+    __m256i accum= _mm256_setzero_si256();
+    __m256 mask;
+
+    uint64_t csumtemp;
+    uint64_t crestemp;    
+    uint64_t sum = 0;
+
+    __m256i res1 = _mm256_setzero_si256();
+    __m256i res2 = _mm256_setzero_si256();
+
+    
+    __m256i temp1 = _mm256_setzero_si256();
+    __m256i temp2 = _mm256_setzero_si256();
+    
+    
+    __m256i sums1 = _mm256_setzero_si256();
+    __m256i sums2 = _mm256_setzero_si256();
+
+    __m256i c_mask = _mm256_set1_epi64x(0x0000000100000001); 
+    uint64_t csum_mask = 4294967295;
+
+    int samples_per_block = 64 / num_features;
+    int samples_per_cl = samples_per_block * 8;
+    int num_cl = ceil(((float)num_samples) / samples_per_cl);
+    
+    uint64_t * d = data;
+    int load_idx = 0;
+    int res_idx = 0;
+    
+    for(int i = 0; i < num_cl; i++){    // cacheline block index -> 256 64bit words per cacheline block
+        for(int j = 0; j < 32; j++){    // 32bit words -> 8 64bit words per cacheline (i.e. 256 samples bits)
+            
+            //UNROLL LOOP FOR BOTH VECTORS, just easier than an array of vectors or something
+            // load correct vector
+            //__m256i a0 = (__m256i) _mm256_loadu_pd(d + (i * 256) + j * 8);
+            a1 = (__m256i) _mm256_load_pd(d + load_idx);
+            /*
+            if(i == 0){
+                int64_t v64val0[4];
+                memcpy(v64val0, &a0, sizeof(v64val0));
+                PRINT_64_B(v64val0[0]);
+                LINE;
+                int64_t v64val[4];
+                memcpy(v64val, &a1, sizeof(v64val));
+                PRINT_64_B(v64val[0]);
+                LINE;
+                LINE;
+                LINE;
+            }
+            */
+            
+            // shift right by one
+            b1 = _mm256_srli_epi64(a1, 1);
+            // TODO third column 
+            c1 = _mm256_srli_epi64(a1, 2);
+            //TODO mask out depending on num_features. Currently for 32
+            c1 = _mm256_and_si256(c_mask, c1);
+            //xor 
+            xor1 = _mm256_xor_si256(a1, b1);
+            
+            //compute res
+            b1 = _mm256_and_si256 (xor1, b1); //xor & b
+            b1 = _mm256_andnot_si256 (temp1, b1); //(xor & b) & (~temp)
+            res1 = _mm256_or_si256 (res1, b1); // res |= ^
+            
+            //compute temp
+            a1 = _mm256_and_si256 (a1, xor1);
+            temp1 = _mm256_or_si256 (temp1, a1);
+            
+            //sum buffer 1 
+            //TODO handle different num_features
+            sums1 = _mm256_or_si256 (sums1,_mm256_slli_epi64(c1, num_features-1-j));
+
+
+            //now for second vector of the cache line
+            // load correct vector
+            a2 = (__m256i) _mm256_load_ps(d + load_idx + 4); // + 4 as 4 64 bit words per vector
+            
+            // shift right by one
+            b2 = _mm256_srli_epi64(a2, 1);
+            // TODO third column 
+            c2 = _mm256_srli_epi64(a2, 2);
+            c2 = _mm256_and_si256(c_mask, c2);
+            //TODO mask depending on num_features. Currently for 32
+
+            //xor 
+            xor2 = _mm256_xor_si256(a2, b2);
+            
+            //compute res
+            b2 = _mm256_and_si256 (xor2, b2); //xor & b
+            b2 = _mm256_andnot_si256 (temp2, b2); //(xor & b) & (~temp)
+            res2 = _mm256_or_si256 (res2, b2); // res |= ^
+            
+            //compute temp
+            a2 = _mm256_and_si256 (a2, xor2);
+            temp2 = _mm256_or_si256 (temp2, a2);
+            
+            //sum buffer 2
+            sums2 = _mm256_or_si256(sums2, _mm256_slli_epi64(c2, num_features-1-j));
+
+
+            load_idx += 8;
+            
+        }
+        
+        // read results out 
+        uint64_t cres[4];
+        //memcpy(cres, &res1, sizeof(cres));
+        _mm256_storeu_pd(cres,(__m256d) res1); // need storeu so it doesn't crash (investigate?)
+        
+        uint64_t cres0 = cres[0];
+        uint64_t cres1 = cres[1];
+        uint64_t cres2 = cres[2];
+        uint64_t cres3 = cres[3];
+
+//TOD
+
+
+        /*
+        if(i == 0){
+            printf("c0, c1, c2, c3 (in order): \n");
+            PRINT_64_B(cres[0]);
+            LINE;
+            PRINT_64_B(cres[1]);
+            LINE;
+            PRINT_64_B(cres[2]);
+            LINE;
+            PRINT_64_B(cres[3]);
+            LINE;
+        }
+        */
+
+        // maybe only do this if there are > 1 samples per block? maybe > x  until its worth it?
+        int ri0 = res_idx;
+        int ri1 = res_idx + samples_per_block;
+        int ri2 = res_idx + 2 * samples_per_block;
+        int ri3 = res_idx + 3 * samples_per_block;
+        int ri4 = res_idx + 4 * samples_per_block; // hopefully this is precomputed
+
+
+        for(int m = 0; m < samples_per_block; m++){
+            //todo do the csum
+
+
+            // first 64 bit block
+            results[ri0] = cres0 & 1;
+            //mask out the other samples in the same word
+
+            cres0 = cres0 >> num_features;
+
+            // second 64 bit block
+            results[ri1] = cres1 & 1;
+
+            cres1 = cres1 >> num_features;
+
+            //third
+            results[ri2] = cres2 & 1;
+
+            cres2 = cres2 >> num_features;
+          //fourth
+            results[ri3] = cres3 & 1;
+
+            cres3 = cres3 >> num_features;
+
+            
+            ri0++;
+            ri1++;
+            ri2++;
+            ri3++;
+        }
+
+        mask= _mm256_loadu_ps(results+res_idx);
+
+        mask =(__m256) _mm256_slli_epi32((__m256i)mask, 31);
+        sums1=(__m256i) _mm256_blendv_ps((__m256)zeros,(__m256)sums1, mask);
+        accum =  _mm256_add_epi32(accum, sums1);
+        
+        // NOW SAME THING BUT FOR res2 !
+        
+        // read results out 
+        uint64_t cres_2[4];
+        _mm256_storeu_pd(cres_2,(__m256d) res2);
+        //memcpy(cres_2, &res2, sizeof(cres_2));
+        uint64_t cres02 = cres_2[0];
+        uint64_t cres12 = cres_2[1];
+        uint64_t cres22 = cres_2[2];
+        uint64_t cres32 = cres_2[3];
+
+
+
+        int ri5 = ri4 + samples_per_block;
+        int ri6 = ri4 + 2 * samples_per_block;
+        int ri7 = ri4 + 3 * samples_per_block;
+        for(int m = 0; m < samples_per_block; m++){
+            // first 64 bit block
+            results[ri4] = cres02 & 1;
+
+            cres02 = cres02 >> num_features;
+            
+            // second 64 bit block
+            results[ri5] = cres12 & 1;
+
+            cres12 = cres12 >> num_features;
+            
+            //third
+            results[ri6] = cres22 & 1;
+
+            cres22 = cres22 >> num_features;
+            
+            
+            //fourth
+            results[ri7] = cres32 & 1;
+
+            cres32 = cres32 >> num_features;
+
+            //printf("SAMPLE NR: %i \n", i * samples_per_cl + (4 + 3) * samples_per_block + m);
+            ri4++;
+            ri5++;
+            ri6++;
+            ri7++;
+        }
+        
+        mask= _mm256_loadu_ps(results+ res_idx + 4 * samples_per_block);
+        mask =(__m256) _mm256_slli_epi32((__m256i)mask, 31);
+        sums2=(__m256i) _mm256_blendv_ps((__m256)zeros,(__m256)sums2, mask);
+        accum = _mm256_add_epi32(accum, sums2);
+
+
+        res_idx += samples_per_cl;
+        
+        // reset temp and res
+        res1 = _mm256_setzero_si256();
+        res2 = _mm256_setzero_si256();
+        
+        temp1 = _mm256_setzero_si256();
+        temp2 = _mm256_setzero_si256();
+
+        sums1 = _mm256_setzero_si256();
+        sums2 = _mm256_setzero_si256();
+    }
+
+
+    //vectorized accumulation
+    uint32_t accums[8];
+    //memcpy(cres, &res1, sizeof(cres));
+    _mm256_storeu_pd(accums,(__m256d) accum);
+    sum += accums[0] + accums[1] + accums[2] + accums[3] + accums[4] + accums[5] + accums[6] + accums[7];
+    
+
+    return sum;
+}

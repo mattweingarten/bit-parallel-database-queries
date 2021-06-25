@@ -77,7 +77,7 @@ void performance_rnd_query_v2(void** queries, enum Query type,char * out_file_na
 	
     printf("======================== Starting Performance Test on Random Data ======================\n\n");
     for(int i = 0; i < 1; i++){
-        for(int k = 0; k < 4; k++){
+        for(int k = 0; k < 1; k++){
 			saveHeaderToFile(out_file_name, cols_sizes[k], n_q_ver);
             for(int j = 0;j < 16;j++){
 				if(cols_sizes[k] * row_sizes[j] < 512) continue;
@@ -268,10 +268,10 @@ double perf_test_q1_v2(q1_t q,size_t rows,size_t cols, uint32_t* db){
 			
 			
 			q(ml,results,temps,&empty_cycles,&empty_cycles,rows,cols,numEntries);
-
-			correct = correct && compare(results,gt,rows);
+			
 			end = stop_tsc( start);
 		}
+		correct = correct && compare(results,gt,rows);
 		N_ITERATIONS = N_ITERATIONS > 10 ? N_ITERATIONS : 10;
 		if(correct)
 			printf(GRN "Warmup correct: TRUE \n" RESET);
@@ -284,6 +284,65 @@ double perf_test_q1_v2(q1_t q,size_t rows,size_t cols, uint32_t* db){
 		start = start_tsc();
 		for(size_t i = 0; i < N_ITERATIONS; ++i){
 				q(ml,results,temps,&empty_cycles,&empty_cycles,rows,cols,numEntries);
+		}
+		end = stop_tsc(start);
+		correct = correct && compare(results,gt,rows);
+		if(correct)
+			printf("Run correct: TRUE \n");
+		else
+			printf("Run correct: FALSE \n");
+
+		free(gt);
+		free(ml);
+		free(results);
+		free(temps);
+		printf("ROWS: %zu, COLS: %zu, N_ITERATIONS: %zu \n", rows, cols, N_ITERATIONS);
+		cycles = ((double)end) / N_ITERATIONS;
+
+    return cycles;
+}
+
+double perf_test_q1_gt(size_t rows,size_t cols, uint32_t* db){
+    bool correct = true;
+		uint32_t * gt = q1_groundtruth(db,rows,cols);
+		uint32_t * ml = weave_samples_wrapper(db,rows,cols);
+		int64_t start,end;
+		double cycles = 0.;
+		int64_t empty_cycles = 0;
+		uint32_t* results = aligned_alloc( 32, rows * sizeof(uint32_t));
+		uint32_t *temps = aligned_alloc( 32, rows * sizeof(uint32_t));
+		for(size_t i = 0 ; i < rows; ++i ){
+				results[i]  = 0;
+				temps[i] = 0;
+		}
+		size_t numEntries = numberOfEntries(rows,cols);
+		
+		/// Warmup
+		
+		start = start_tsc();
+		size_t N_ITERATIONS = 0;
+		for(; N_ITERATIONS < N_WARMUP && end < MIN_CYCLES; ++N_ITERATIONS){
+			
+			
+			//q(ml,results,temps,&empty_cycles,&empty_cycles,rows,cols,numEntries);
+			q1(db,results,rows,cols);
+			
+			end = stop_tsc( start);
+		}
+		correct = correct && compare(results,gt,rows);
+		N_ITERATIONS = N_ITERATIONS > 10 ? N_ITERATIONS : 10;
+		if(correct)
+			printf(GRN "Warmup correct: TRUE \n" RESET);
+		else{
+			printf(RED "Warmup correct: FALSE \n" RESET);
+			exit(1);
+		}
+		//calculation
+
+		start = start_tsc();
+		for(size_t i = 0; i < N_ITERATIONS; ++i){
+				//q(ml,results,temps,&empty_cycles,&empty_cycles,rows,cols,numEntries);
+				q1(db,results,rows,cols);
 		}
 		end = stop_tsc(start);
 		correct = correct && compare(results,gt,rows);
